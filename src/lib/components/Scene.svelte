@@ -13,9 +13,10 @@
 		Plane,
 		Line3,
 		Float32BufferAttribute,
-		Box3
+		Box3,
+		Matrix4
 	} from 'three';
-	import { ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
+	import { ExtendedTriangle, MeshBVH, type HitPointInfo } from 'three-mesh-bvh';
 	import type { Readable } from 'svelte/store';
 
 	export let buildSurface = [300, 300, 300];
@@ -110,48 +111,67 @@
 				indices[i * 3 + 2] = $stl.index!.array[pos + 2];
 			}
 			geometry.setIndex(indices);
-			return new MeshBVH(geometry);
+			const bvh = new MeshBVH(geometry);
+			geometry.boundsTree = bvh;
+			return bvh;
 		});
 		const activeNonPlanarSurfaces: [number, MeshBVH][] = [];
 		const consumedNonPlanarSurfaces = nonPlanarSurfaces.map(() => false);
 		const withheldLines: number[][][] = nonPlanarSurfaces.map(() => [[]]);
+		const withheldSurfaces: [number, MeshBVH][][] = nonPlanarSurfaces.map(() => []);
 		const blacklist = Array.from({ length: index.count / 3 }).map(() => false);
 
 		const line = new Line3();
 		const targetVector1 = new Vector3();
 		const targetVector2 = new Vector3();
 		const targetVector3 = new Vector3();
+		const hit1: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
+		const hit2: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
 		const layerPlane = new Plane();
-		const layerBox = new Box3();
+		function deactivateSurface(surface: MeshBVH, index: number) {
+			layers.push({ type: 'surface', geometry: surface.geometry });
+			for (const lines of withheldLines[index]) {
+				if (lines.length === 0) continue;
+				const additionalGeometry = new BufferGeometry();
+				additionalGeometry.setAttribute('position', new Float32BufferAttribute(lines, 3));
+				layers.push({ type: 'line', geometry: additionalGeometry });
+			}
+			for (const surface of withheldSurfaces[index]) {
+				deactivateSurface(surface[1], surface[0]);
+			}
+			delete withheldLines[index];
+		}
 		for (let layer = 0; layer < $stl.boundingBox!.max.z; layer += layerHeight) {
 			layerPlane.set(bedNormal, -layer);
-			layerBox.set(
-				new Vector3(0, 0, layer),
-				new Vector3(buildSurface[0], buildSurface[1], layer + layerHeight)
-			);
 			const layerGeometry = new BufferGeometry();
 			const positions: number[] = [];
 			for (let i = 0; i < nonPlanarSurfaces.length; i++) {
 				if (consumedNonPlanarSurfaces[i]) continue;
-				if (layerBox.intersectsBox(nonPlanarSurfaces[i].geometry.boundingBox!)) {
-					activeNonPlanarSurfaces.push([i, nonPlanarSurfaces[i]]);
+				if (nonPlanarSurfaces[i].geometry.boundingBox!.min.z > layer) {
 					consumedNonPlanarSurfaces[i] = true;
+					activeNonPlanarSurfaces.push([i, nonPlanarSurfaces[i]]);
 				}
 			}
-			for (let i = 0; i < activeNonPlanarSurfaces.length; i++) {
+			deactivate: for (let i = 0; i < activeNonPlanarSurfaces.length; i++) {
 				const [index, surface] = activeNonPlanarSurfaces[i];
 				withheldLines[index].push([]);
-				if (!layerBox.intersectsBox(surface.geometry.boundingBox!)) {
+				if (surface.geometry.boundingBox!.max.z <= layer) {
 					activeNonPlanarSurfaces.splice(i, 1);
 					i--;
-					layers.push({ type: 'surface', geometry: surface.geometry });
-					for (const lines of withheldLines[index]) {
-						if (lines.length === 0) continue;
-						const additionalGeometry = new BufferGeometry();
-						additionalGeometry.setAttribute('position', new Float32BufferAttribute(lines, 3));
-						layers.push({ type: 'line', geometry: additionalGeometry });
+
+					for (const [activeIndex, active] of activeNonPlanarSurfaces) {
+						if (activeIndex === index) continue;
+						const hit = active.closestPointToGeometry(surface.geometry, new Matrix4(), hit1, hit2);
+						if (
+							hit &&
+							hit1.point.z < hit2.point.z &&
+							hit1.point.clone().sub(hit2.point).angleTo(bedNormal) > maxNonPlanarAngle
+						) {
+							withheldSurfaces[activeIndex].push([index, surface]);
+							continue deactivate;
+						}
 					}
-					delete withheldLines[index];
+					deactivateSurface(surface, index);
 				}
 			}
 
@@ -206,6 +226,9 @@
 			layerGeometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 			layers.push({ type: 'line', geometry: layerGeometry });
 			console.log('layer', Math.round(layer / layerHeight), positions.length);
+		}
+		for (const [index, surface] of activeNonPlanarSurfaces) {
+			deactivateSurface(surface, index);
 		}
 		layers = [...layers];
 	}
