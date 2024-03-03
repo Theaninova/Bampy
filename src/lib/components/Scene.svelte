@@ -11,7 +11,8 @@
 		Mesh,
 		Points,
 		Triangle,
-		DoubleSide
+		DoubleSide,
+		Sphere
 	} from 'three';
 	import { degToRad } from 'three/src/math/MathUtils.js';
 	import { MeshBVH } from 'three-mesh-bvh';
@@ -49,116 +50,79 @@
 		// need to build bvh live while generating the slices, so angle checks can be done with
 		// respect to the closest point in the slice
 
-    const bvh = new MeshBVH($stl);
-		let indices: [number, number, number][] = [];
-		const positions = $stl.getAttribute('position');
-		console.log($stl.index);
+		const bvh = new MeshBVH($stl);
+		const positions = bvh.geometry.getAttribute('position');
+		const index = bvh.geometry.index!;
 
+		const qualifyingTriangles = Array.from({ length: index.count / 3 }, () => false);
+		let qualifyingTrianglesCount = 0;
 		const triangle = new Triangle();
 		const normal = new Vector3();
-		for (let i = 0; i < $stl.index!.count; i += 3) {
+		for (let i = 0; i < index.count / 3; i++) {
 			triangle.setFromAttributeAndIndices(
 				positions,
-				$stl.index!.array[i],
-				$stl.index!.array[i + 1],
-				$stl.index!.array[i + 2]
+				index.array[i * 3],
+				index.array[i * 3 + 1],
+				index.array[i * 3 + 2]
 			);
 			triangle.getNormal(normal);
 			const angle = normal.angleTo(bedNormal);
 			if ((angle > Math.PI / 2 ? Math.PI - angle : angle) < maxNonPlanarAngle) {
-				indices.push([$stl.index!.array[i], $stl.index!.array[i + 1], $stl.index!.array[i + 2]]);
+				qualifyingTriangles[i] = true;
+				qualifyingTrianglesCount++;
 			}
 		}
 
-		const pointIndex = Array.from({ length: 3 }, (_, j) =>
-			Array.from({ length: positions.count }, (_, i) => i).sort(
-				(a, b) => positions.array[a * 3 + j] - positions.array[b * 3 + j]
-			)
-		);
-		function findNearby(i: number): number[] {
-			const a = [positions.array[i * 3], positions.array[i * 3 + 1], positions.array[i * 3 + 2]];
-			const ia = [-1, -1, -1];
-			// binary search for the closest points in x, y and z
-			for (let j = 0; j < 3; j++) {
-				let d = Math.floor(pointIndex[j].length / 2);
+		const spheres = Array.from({ length: 3 }, () => new Sphere());
+		const vectors = Array.from({ length: 3 }, () => new Vector3());
+		const surfaces: number[][] = [];
+		while (qualifyingTrianglesCount > 0) {
+			const faceIndex = qualifyingTriangles.findIndex((it) => it);
+			qualifyingTriangles[faceIndex] = false;
+			qualifyingTrianglesCount--;
+			console.log(qualifyingTrianglesCount);
+			const surface = [faceIndex];
+			let cursor = 0;
+			while (cursor < surface.length) {
+				for (let i = 0; i < 3; i++) {
+					vectors[i].fromBufferAttribute(positions, index.array[surface[cursor] * 3 + i]);
+					spheres[i].set(vectors[i], tolerance);
+				}
 
-				inner: while (d / 2 >= 1) {
-					const value = positions.array[pointIndex[j][d] * 3 + j];
-					const diff = value - a[j];
-					if (Math.abs(diff) < tolerance) {
-						ia[j] = d;
-						break inner;
-					} else if (value < a[j]) {
-						d = Math.floor(d / 2);
-					} else {
-						d = Math.floor(d + d / 2);
+				bvh.shapecast({
+					intersectsBounds(box, _isLeaf, _score, _depth, _nodeIndex) {
+						return spheres.some((sphere) => box.intersectsSphere(sphere));
+					},
+					intersectsTriangle(triangle, triangleIndex, _contained, _depth) {
+						if (
+							qualifyingTriangles[triangleIndex] &&
+							spheres.some((sphere) => triangle.intersectsSphere(sphere))
+						) {
+							qualifyingTriangles[triangleIndex] = false;
+							qualifyingTrianglesCount--;
+							console.log(qualifyingTrianglesCount);
+							surface.push(triangleIndex);
+						}
 					}
-				}
-				if (ia[j] === -1) return [];
-			}
-      while ()
-		}
-    bvh.shapecast({
-      intersectsBounds(box, isLeaf, score, depth, nodeIndex) {
-        // TODO
-      },
-        intersectsTriangle(triangle, triangleIndex, contained, depth) {
-            // TODO
-        }
-    })
-		const connectedPoints: number[] = Array.from({ length: positions.count });
-		let connection = 0;
-		for (let i = 0; i < connectedPoints.length; i++) {
-			if (connectedPoints[i] !== undefined) continue;
-			connectedPoints[i] = i;
-			let connected;
-			while ((connected = connectedPoints[pointIndex[0][connection]]) !== undefined) {
-				connectedPoints[pointIndex[0][connection]] = i;
-				connection++;
-			}
+				});
 
-			connection++;
-		}
-
-		const faceConnections = new Map<number, number[]>();
-		function spatialHash(i: number) {
-			return (
-				(positions.getX(i) * 19349663) ^
-				(positions.getY(i) * 83492791) ^
-				(positions.getZ(i) * 73856093)
+				cursor++;
+			}
+			surfaces.push(
+				surface.flatMap((face) => [
+					index.array[face * 3],
+					index.array[face * 3 + 1],
+					index.array[face * 3 + 2]
+				])
 			);
 		}
-		for (let faceIndex = 0; faceIndex < indices.length; faceIndex++) {
-			let surface: number[] | undefined = undefined;
-			const values = indices[faceIndex].map((i) => {
-				const hash = spatialHash(i);
-				const value = faceConnections.get(hash);
-				surface ??= value;
-				return [hash, value] as const;
-			});
-			surface ??= [];
-			surface.push(faceIndex);
-			for (const [hash, original] of values) {
-				faceConnections.set(hash, surface);
-				if (original && original !== surface) {
-					surface.concat(original);
-				}
-			}
-		}
-		const surfaceSet = new Set(faceConnections.values());
-		const iterator = surfaceSet.values();
-		const surfaces = Array.from({ length: surfaceSet.size }, () => {
-			const value = iterator.next().value;
-			return Array.from(
-				{ length: value.length * 3 },
-				(_, i) => indices[value[Math.floor(i / 3)]][i % 3]
-			);
-		});
+
+		console.log(surfaces);
 
 		surface = new BufferGeometry();
 		surface.setAttribute('position', positions);
 		surface.setAttribute('normal', $stl.getAttribute('normal'));
-		surface.setIndex(surfaces[1].flat());
+		surface.setIndex(surfaces[0].flat());
 
 		/*const hull: [position: Vector3, index: number][][] = [];
 		let limit = 0;
