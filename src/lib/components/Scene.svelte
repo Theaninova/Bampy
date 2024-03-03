@@ -21,7 +21,7 @@
 	export let buildSurface = [300, 300, 300];
 	export let layerHeight = 0.2;
 	export let nozzleSize = 0.4;
-	export let tolerance = 0.005;
+	export let tolerance = 0.1;
 
 	export let maxNonPlanarAngle = MathUtils.degToRad(20);
 	export let bedNormal = new Vector3(0, 0, 1);
@@ -80,7 +80,6 @@
 			const faceIndex = qualifyingTriangles.findIndex((it) => it);
 			qualifyingTriangles[faceIndex] = false;
 			qualifyingTrianglesCount--;
-			console.log(qualifyingTrianglesCount);
 			const surface = [faceIndex];
 			let cursor = 0;
 			while (cursor < surface.length) {
@@ -100,7 +99,6 @@
 						) {
 							qualifyingTriangles[triangleIndex] = false;
 							qualifyingTrianglesCount--;
-							console.log(qualifyingTrianglesCount);
 							surface.push(triangleIndex);
 						}
 					}
@@ -122,7 +120,7 @@
 		surface = new BufferGeometry();
 		surface.setAttribute('position', positions);
 		surface.setAttribute('normal', $stl.getAttribute('normal'));
-		surface.setIndex(surfaces[0].flat());
+		surface.setIndex(surfaces[4]);
 
 		/*const hull: [position: Vector3, index: number][][] = [];
 		let limit = 0;
