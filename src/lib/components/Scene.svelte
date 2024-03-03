@@ -24,6 +24,8 @@
 	export let nozzleSize = 0.4;
 	export let tolerance = 0.005;
 	export let progress = 1;
+	export let progressLayer = 0;
+	export let showSlices = 1;
 
 	export let maxNonPlanarAngle = MathUtils.degToRad(20);
 	export let bedNormal = new Vector3(0, 0, 1);
@@ -32,10 +34,26 @@
 
 	const stl: Readable<BufferGeometry> = useLoader(STLLoader).load('/benchy.stl');
 
-	let mesh: Mesh;
-	let layers: { type: 'line' | 'surface'; geometry: BufferGeometry }[] = [];
+	const enum LayerType {
+		Line,
+		Surface
+	}
 
+	let mesh: Mesh;
+	let layers: { type: LayerType; geometry: BufferGeometry }[] = [];
 	$: if ($stl) {
+		(async () => {
+			progress = 0;
+			progressLayer = 0;
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+			const generator = slice();
+			while (!generator.next().done) {
+				await new Promise((resolve) => requestAnimationFrame(resolve));
+			}
+		})();
+	}
+
+	function* slice() {
 		const bvh = new MeshBVH($stl);
 		const positions = $stl.getAttribute('position');
 		const normals = $stl.getAttribute('normal');
@@ -117,8 +135,10 @@
 		});
 		const activeNonPlanarSurfaces: [number, MeshBVH][] = [];
 		const consumedNonPlanarSurfaces = nonPlanarSurfaces.map(() => false);
-		const withheldLines: number[][][] = nonPlanarSurfaces.map(() => [[]]);
-		const withheldSurfaces: [number, MeshBVH][][] = nonPlanarSurfaces.map(() => []);
+		const withheld: Array<
+			| { type: LayerType.Line; geometry: number[] }
+			| { type: LayerType.Surface; id: [number, MeshBVH] }
+		>[] = nonPlanarSurfaces.map(() => [{ type: LayerType.Line, geometry: [] }]);
 		const blacklist = Array.from({ length: index.count / 3 }).map(() => false);
 
 		const line = new Line3();
@@ -129,17 +149,21 @@
 		const hit2: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
 		const layerPlane = new Plane();
 		function deactivateSurface(surface: MeshBVH, index: number) {
-			layers.push({ type: 'surface', geometry: surface.geometry });
-			for (const lines of withheldLines[index]) {
-				if (lines.length === 0) continue;
-				const additionalGeometry = new BufferGeometry();
-				additionalGeometry.setAttribute('position', new Float32BufferAttribute(lines, 3));
-				layers.push({ type: 'line', geometry: additionalGeometry });
+			layers.push({ type: LayerType.Surface, geometry: surface.geometry });
+			for (const thing of withheld[index]) {
+				if (thing.type === LayerType.Line) {
+					if (thing.geometry.length === 0) continue;
+					const additionalGeometry = new BufferGeometry();
+					additionalGeometry.setAttribute(
+						'position',
+						new Float32BufferAttribute(thing.geometry, 3)
+					);
+					layers.push({ type: LayerType.Line, geometry: additionalGeometry });
+				} else if (thing.type === LayerType.Surface) {
+					deactivateSurface(thing.id[1], thing.id[0]);
+				}
 			}
-			for (const surface of withheldSurfaces[index]) {
-				deactivateSurface(surface[1], surface[0]);
-			}
-			delete withheldLines[index];
+			delete withheld[index];
 		}
 		for (let layer = 0; layer < $stl.boundingBox!.max.z; layer += layerHeight) {
 			layerPlane.set(bedNormal, -layer);
@@ -154,7 +178,6 @@
 			}
 			deactivate: for (let i = 0; i < activeNonPlanarSurfaces.length; i++) {
 				const [index, surface] = activeNonPlanarSurfaces[i];
-				withheldLines[index].push([]);
 				if (surface.geometry.boundingBox!.max.z <= layer) {
 					activeNonPlanarSurfaces.splice(i, 1);
 					i--;
@@ -167,12 +190,14 @@
 							hit1.point.z < hit2.point.z &&
 							hit1.point.clone().sub(hit2.point).angleTo(bedNormal) > maxNonPlanarAngle
 						) {
-							withheldSurfaces[activeIndex].push([index, surface]);
+							withheld[activeIndex].push({ type: LayerType.Surface, id: [index, surface] });
+							withheld[activeIndex].push({ type: LayerType.Line, geometry: [] });
 							continue deactivate;
 						}
 					}
 					deactivateSurface(surface, index);
 				}
+				withheld[index]?.push({ type: LayerType.Line, geometry: [] });
 			}
 
 			bvh.shapecast({
@@ -192,13 +217,15 @@
 					function add(a: Vector3, b: Vector3) {
 						for (let i = 0; i < activeNonPlanarSurfaces.length; i++) {
 							const [index, surface] = activeNonPlanarSurfaces[i];
+							const withheldLayer = withheld[index].at(-1)!;
+							if (withheldLayer.type === LayerType.Surface) throw new Error('Unexpected surface');
 							const h1 = surface.closestPointToPoint(a);
 							if (
 								h1 &&
 								h1.point.z < a.z &&
 								h1.point.clone().sub(a).angleTo(bedNormal) > maxNonPlanarAngle
 							) {
-								withheldLines[index].at(-1)!.push(a.x, a.y, a.z, b.x, b.y, b.z);
+								withheldLayer.geometry.push(a.x, a.y, a.z, b.x, b.y, b.z);
 								return;
 							}
 							const h2 = surface.closestPointToPoint(b);
@@ -207,7 +234,7 @@
 								h2.point.z < b.z &&
 								h2.point.clone().sub(b).angleTo(bedNormal) > maxNonPlanarAngle
 							) {
-								withheldLines[index].at(-1)!.push(a.x, a.y, a.z, b.x, b.y, b.z);
+								withheldLayer.geometry.push(a.x, a.y, a.z, b.x, b.y, b.z);
 								return;
 							}
 						}
@@ -224,13 +251,17 @@
 				}
 			});
 			layerGeometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-			layers.push({ type: 'line', geometry: layerGeometry });
-			console.log('layer', Math.round(layer / layerHeight), positions.length);
+			layers.push({ type: LayerType.Line, geometry: layerGeometry });
+			layers = layers;
+			progress = layer / $stl.boundingBox!.max.z;
+			progressLayer = Math.round(layer / layerHeight);
+			yield;
 		}
 		for (const [index, surface] of activeNonPlanarSurfaces) {
 			deactivateSurface(surface, index);
 		}
-		layers = [...layers];
+		progress = 1;
+		layers = layers;
 	}
 </script>
 
@@ -252,13 +283,13 @@
 />
 
 {#each layers as { geometry, type }, i}
-	{@const visible = progress >= i / layers.length}
+	{@const visible = showSlices >= i / layers.length}
 	{@const color = new Color(0, i / layers.length, 0.2)}
-	{#if type === 'line'}
+	{#if type === LayerType.Line}
 		<T.LineSegments {geometry} {visible}>
 			<T.LineBasicMaterial {color} />
 		</T.LineSegments>
-	{:else if type === 'surface'}
+	{:else if type === LayerType.Surface}
 		<T.Mesh {geometry} {visible}>
 			<T.MeshMatcapMaterial {color} side={DoubleSide} />
 		</T.Mesh>
