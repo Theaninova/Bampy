@@ -153,14 +153,14 @@ function slice({
 		const positions: number[] = [];
 		for (let i = 0; i < nonPlanarSurfaces.length; i++) {
 			if (consumedNonPlanarSurfaces[i]) continue;
-			if (nonPlanarSurfaces[i].geometry.boundingBox!.min.z > layer) {
+			if (layer >= nonPlanarSurfaces[i].geometry.boundingBox!.min.z) {
 				consumedNonPlanarSurfaces[i] = true;
 				activeNonPlanarSurfaces.push([i, nonPlanarSurfaces[i]]);
 			}
 		}
 		deactivate: for (let i = 0; i < activeNonPlanarSurfaces.length; i++) {
 			const [index, surface] = activeNonPlanarSurfaces[i];
-			if (surface.geometry.boundingBox!.max.z <= layer) {
+			if (layer > surface.geometry.boundingBox!.max.z) {
 				activeNonPlanarSurfaces.splice(i, 1);
 				i--;
 

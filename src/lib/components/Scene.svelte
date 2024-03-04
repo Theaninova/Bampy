@@ -10,7 +10,8 @@
 		Mesh,
 		DoubleSide,
 		Color,
-		BufferGeometryLoader
+		BufferGeometryLoader,
+		ConeGeometry
 	} from 'three';
 	import { writable } from 'svelte/store';
 	import { onDestroy, onMount } from 'svelte';
@@ -63,7 +64,6 @@
 	export let maxNonPlanarAngle = MathUtils.degToRad(20);
 	export let bedNormal = new Vector3(0, 0, 1);
 
-	let mesh: Mesh;
 	let layers = writable<Layer[]>([]);
 
 	const stl: AsyncWritable<BufferGeometry> = useLoader(STLLoader).load('/benchy.stl');
@@ -113,8 +113,8 @@
 	{/if}
 {/each}
 
-{#if $stl && false}
-	<T.Mesh geometry={$stl} bind:ref={mesh}>
+{#if $stl}
+	<T.Mesh geometry={$stl} position.y={40}>
 		<T.MeshNormalMaterial />
 	</T.Mesh>
 {/if}

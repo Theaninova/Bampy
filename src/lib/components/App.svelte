@@ -14,7 +14,7 @@
 </Canvas>
 
 <div class="controls">
-	<input type="range" min="0" max="1" step="0.01" bind:value={showSlices} orient="vertical" />
+	<input type="range" min="0" max="1" step="0.001" bind:value={showSlices} orient="vertical" />
 </div>
 
 {#if $progress !== undefined}
@@ -28,6 +28,7 @@
 
 <style lang="scss">
 	input[type='range'] {
+		height: 80%;
 	}
 
 	.controls {
