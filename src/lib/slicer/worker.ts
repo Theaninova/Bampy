@@ -170,7 +170,8 @@ function slice({
 					if (
 						hit &&
 						hit1.point.z < hit2.point.z &&
-						hit1.point.clone().sub(hit2.point).angleTo(bedNormal) > maxNonPlanarAngle
+						Math.abs(Math.PI / 2 - hit1.point.clone().sub(hit2.point).angleTo(bedNormal)) >
+							maxNonPlanarAngle
 					) {
 						withheld[activeIndex].push({ type: LayerType.Surface, id: [index, surface] });
 						withheld[activeIndex].push({ type: LayerType.Line, geometry: [] });
