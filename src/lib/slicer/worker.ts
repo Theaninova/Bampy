@@ -3,6 +3,7 @@ import {
 	BufferGeometryLoader,
 	Float32BufferAttribute,
 	Line3,
+	MathUtils,
 	Matrix4,
 	Plane,
 	Vector3
@@ -18,7 +19,6 @@ import {
 
 addEventListener('message', (event: MessageEvent<WorkerEvent>) => {
 	if (event.data.type === 'slice') {
-		console.log(event.data.data);
 		slice(event.data.data);
 	}
 });
@@ -205,7 +205,7 @@ function slice({
 						if (
 							h1 &&
 							h1.point.z < a.z &&
-							h1.point.clone().sub(a).angleTo(bedNormal) > maxNonPlanarAngle
+							Math.abs(Math.PI / 2 - h1.point.clone().sub(a).angleTo(bedNormal)) > maxNonPlanarAngle
 						) {
 							withheldLayer.geometry.push(a.x, a.y, a.z, b.x, b.y, b.z);
 							return;
@@ -214,7 +214,7 @@ function slice({
 						if (
 							h2 &&
 							h2.point.z < b.z &&
-							h2.point.clone().sub(b).angleTo(bedNormal) > maxNonPlanarAngle
+							Math.abs(Math.PI / 2 - h2.point.clone().sub(b).angleTo(bedNormal)) > maxNonPlanarAngle
 						) {
 							withheldLayer.geometry.push(a.x, a.y, a.z, b.x, b.y, b.z);
 							return;
