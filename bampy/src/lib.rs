@@ -1,10 +1,9 @@
-use std::collections::LinkedList;
-
 use nalgebra::{vector, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::slicer::{
-    base_slices::create_base_slices, split_surface::split_surface, Mesh, SlicerOptions, Triangle,
+    base_slices::create_base_slices, mesh::Mesh, split_surface::split_surface, triangle::Triangle,
+    SlicerOptions,
 };
 
 mod slicer;
@@ -18,7 +17,7 @@ pub fn slice(positions: &[f32], layer_height: f32, max_angle: f32) {
 
     assert_eq!(positions.len() % 9, 0);
 
-    let mut surface_triangles = LinkedList::<Triangle<f32>>::new();
+    let mut surface_triangles = Vec::<Triangle<f32>>::with_capacity(positions.len() / 9);
     let mut slicable_triangles = Vec::with_capacity(positions.len() / 9);
     for i in (0..positions.len()).step_by(9) {
         let triangle = Triangle::new(
@@ -30,10 +29,11 @@ pub fn slice(positions: &[f32], layer_height: f32, max_angle: f32) {
         if triangle.normal.angle(&BED_NORMAL) > max_angle {
             slicable_triangles.push(triangle);
         } else {
-            surface_triangles.push_back(triangle);
+            surface_triangles.push(triangle);
         }
     }
     slicable_triangles.shrink_to_fit();
+    surface_triangles.shrink_to_fit();
 
     console_log!("Computing BVH");
 

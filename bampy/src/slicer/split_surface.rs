@@ -1,12 +1,13 @@
-use super::triangle::Triangle;
+use super::{mesh::Mesh, triangle::Triangle};
 use bvh::bvh::{Bvh, BvhNode};
 
 /// Splits a surface into connected surfaces.
-pub fn split_surface(mut triangles: Vec<Triangle<f32>>) -> Vec<Vec<Triangle<f32>>> {
+pub fn split_surface(mut triangles: Vec<Triangle<f32>>) -> Vec<Mesh<f32>> {
     let mut surfaces = vec![];
     while let Some(triangle) = triangles.pop() {
         let mut surface = vec![triangle];
         let mut bvh = Bvh::build(&mut surface);
+        let mut aabb = surface[0].aabb;
         triangles.retain_mut(|triangle| {
             let mut stack = Vec::<usize>::new();
             stack.push(0);
@@ -32,13 +33,21 @@ pub fn split_surface(mut triangles: Vec<Triangle<f32>>) -> Vec<Vec<Triangle<f32>
                     } => {
                         if triangle.connected_with_triangle(surface[shape_index]) {
                             surface.push(*triangle);
-                            bvh.add_shape(&mut surface, surface.len() - 1);
+                            let index = surface.len() - 1;
+                            bvh.add_shape(&mut surface, index);
+                            aabb.join_mut(&triangle.aabb);
                             return false;
                         }
                     }
                 }
             }
             true
+        });
+
+        surfaces.push(Mesh {
+            triangles: surface,
+            aabb,
+            bvh,
         })
     }
     surfaces

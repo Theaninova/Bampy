@@ -20,7 +20,7 @@ where
             aabb: triangles
                 .get(0)
                 .map(|triangle| {
-                    let mut aabb = triangle.aabb();
+                    let mut aabb = triangle.aabb;
                     for triangle in triangles.iter().skip(1) {
                         aabb.join_mut(&triangle.aabb);
                     }

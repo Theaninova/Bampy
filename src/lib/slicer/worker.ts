@@ -1,21 +1,5 @@
-import {
-	BufferGeometry,
-	BufferGeometryLoader,
-	Float32BufferAttribute,
-	Line3,
-	MathUtils,
-	Matrix4,
-	Plane,
-	Vector3
-} from 'three';
-import { ExtendedTriangle, MeshBVH, type HitPointInfo } from 'three-mesh-bvh';
-import {
-	LayerType,
-	type LayerMessage,
-	type SliceArguments,
-	type ProgressMessage,
-	type WorkerEvent
-} from './worker-data';
+import { BufferGeometryLoader } from 'three';
+import { type SliceArguments, type ProgressMessage, type WorkerEvent } from './worker-data';
 import init, { slice } from 'bampy';
 
 addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
