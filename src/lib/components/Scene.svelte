@@ -7,11 +7,9 @@
 		BufferGeometry,
 		MathUtils,
 		Vector3,
-		Mesh,
 		DoubleSide,
 		Color,
-		BufferGeometryLoader,
-		ConeGeometry
+		BufferGeometryLoader
 	} from 'three';
 	import { writable } from 'svelte/store';
 	import { onDestroy, onMount } from 'svelte';

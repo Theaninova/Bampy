@@ -14,6 +14,7 @@
       overlays = [(import rust-overlay)];
       pkgs = import nixpkgs {inherit system overlays;};
       rust-bin = pkgs.rust-bin.stable.latest.default.override {
+        targets = [ "wasm32-unknown-unknown" ];
         extensions = ["rust-src" "rust-std" "clippy" "rust-analyzer"];
       };
       fontMin = pkgs.python311.withPackages (ps: with ps; [brotli fonttools] ++ (with fonttools.optional-dependencies; [woff]));
@@ -34,6 +35,7 @@
           nodePackages.pnpm
           rust-bin
           fontMin
+          wasm-pack
         ])
         ++ (with tauriPkgs; [
           curl
