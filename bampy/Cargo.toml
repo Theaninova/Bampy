@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
+console_error_panic_hook = ["dep:console_error_panic_hook"]
 
 [dependencies]
 wasm-bindgen = "0.2.84"
@@ -21,6 +22,7 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 bvh = "0.8.0"
 nalgebra = "0.32.4"
 num = "0.4.1"
+approx = "0.5.1"
 
 [dependencies.getrandom]
 features = ["js"]

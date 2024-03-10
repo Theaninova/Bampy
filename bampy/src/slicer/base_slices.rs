@@ -1,34 +1,30 @@
 use bvh::bvh::BvhNode;
-use nalgebra::Point;
 
-use super::{Line, SlicerOptions};
+use super::{line::Line3, mesh::Mesh, SlicerOptions};
 
 #[derive(Debug)]
 pub struct BaseSlice {
-    z: f32,
-    lines: Vec<Line<f32, 3>>,
+    pub z: f32,
+    pub lines: Vec<Line3<f32>>,
 }
 
-/**
- * Creates base slices from the geometry, excluding surfaces.
- *
- * The slicse are not sorted or separated into rings.
- */
-pub fn create_base_slices(options: &SlicerOptions, surface_triangles: &[bool]) -> Vec<BaseSlice> {
-    let layer_count = f32::floor(options.aabb.max.z / options.layer_height) as usize;
+/// Creates base slices from the geometry, excluding surfaces.
+/// The slicse are not sorted or separated into rings.
+pub fn create_base_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<BaseSlice> {
+    let layer_count = f32::floor(slicable.aabb.max.z / options.layer_height) as usize;
     let mut base_slices = Vec::<BaseSlice>::with_capacity(layer_count);
 
     for i in 0..layer_count {
         let layer = i as f32 * options.layer_height;
-        let base_slice = BaseSlice {
+        let mut base_slice = BaseSlice {
             z: layer,
             lines: vec![],
         };
 
-        let mut stack = Vec::<usize>::with_capacity(options.bvh.nodes.len());
+        let mut stack = Vec::<usize>::with_capacity(slicable.bvh.nodes.len());
         stack.push(0);
         while let Some(i) = stack.pop() {
-            match options.bvh.nodes[i] {
+            match slicable.bvh.nodes[i] {
                 BvhNode::Node {
                     parent_index: _,
                     child_l_index,
@@ -47,8 +43,11 @@ pub fn create_base_slices(options: &SlicerOptions, surface_triangles: &[bool]) -
                     parent_index: _,
                     shape_index,
                 } => {
-                    let triangle = options.triangles[shape_index];
-                    let a = Point::<f32, 3>::new(triangle.a.x, triangle.a.y, layer);
+                    slicable.triangles[shape_index]
+                        .intersect_z(layer)
+                        .map(|line| {
+                            base_slice.lines.push(line);
+                        });
                 }
             }
         }

@@ -27,8 +27,8 @@ addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
 		await init();
 		slice(
 			geometry.attributes.position.array as Float32Array,
-			geometry.attributes.normal.array as Float32Array,
-			event.data.data.layerHeight
+			event.data.data.layerHeight,
+			event.data.data.maxNonPlanarAngle
 		);
 	}
 });
