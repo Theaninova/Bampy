@@ -1,6 +1,13 @@
 use bvh::bvh::BvhNode;
 
-use super::{line::Line3, mesh::Mesh, SlicerOptions};
+use crate::console_log;
+
+use super::{
+    line::Line3,
+    mesh::Mesh,
+    slice_rings::{find_slice_rings, SliceRing},
+    SlicerOptions,
+};
 
 #[derive(Debug)]
 pub struct BaseSlice {
@@ -10,11 +17,12 @@ pub struct BaseSlice {
 
 /// Creates base slices from the geometry, excluding surfaces.
 /// The slicse are not sorted or separated into rings.
-pub fn create_base_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<BaseSlice> {
+pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<SliceRing> {
     let layer_count = f32::floor(slicable.aabb.max.z / options.layer_height) as usize;
-    let mut base_slices = Vec::<BaseSlice>::with_capacity(layer_count);
+    let mut rings = vec![];
 
     for i in 0..layer_count {
+        console_log!("Layer {}", i);
         let layer = i as f32 * options.layer_height;
         let mut base_slice = BaseSlice {
             z: layer,
@@ -33,10 +41,10 @@ pub fn create_base_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<
                     child_r_aabb,
                 } => {
                     if layer >= child_l_aabb.min.z && layer <= child_l_aabb.max.z {
-                        stack.push(child_r_index);
+                        stack.push(child_l_index);
                     }
                     if layer >= child_r_aabb.min.z && layer <= child_r_aabb.max.z {
-                        stack.push(child_l_index);
+                        stack.push(child_r_index);
                     }
                 }
                 BvhNode::Leaf {
@@ -52,8 +60,8 @@ pub fn create_base_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<
             }
         }
 
-        base_slices.push(base_slice);
+        rings.append(&mut find_slice_rings(base_slice));
     }
 
-    base_slices
+    rings
 }

@@ -23,6 +23,8 @@ bvh = "0.8.0"
 nalgebra = "0.32.4"
 num = "0.4.1"
 approx = "0.5.1"
+serde = "1.0.197"
+tsify = { version = "0.4.5", features = ["js"] }
 
 [dependencies.getrandom]
 features = ["js"]

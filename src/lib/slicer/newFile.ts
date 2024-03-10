@@ -1,11 +1,5 @@
 import { BufferGeometry, BufferGeometryLoader, Float32BufferAttribute } from 'three';
-import {
-	type SliceArguments,
-	type ProgressMessage,
-	type WorkerEvent,
-	type LayerMessage,
-	LayerType
-} from './worker-data';
+import { type WorkerEvent } from './worker-data';
 import init, { slice } from 'bampy';
 
 addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
@@ -26,26 +20,8 @@ addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
 
 			self.postMessage({
 				type: 'layer',
-				data: { type: LayerType.Line, geometry: geometry.toJSON() }
+				data: { type: LayerType.Line, geometry: layerGeometry.toJSON() }
 			} satisfies LayerMessage);
 		}
 	}
 });
-
-async function todo({
-	stl,
-	bedNormal: bedNormalArray,
-	maxNonPlanarAngle,
-	tolerance,
-	layerHeight
-}: SliceArguments) {
-	greet();
-	self.postMessage({ type: 'progress', percent: 0, layer: 0 } satisfies ProgressMessage);
-
-	// TODO
-
-	self.postMessage({
-		type: 'progress',
-		layer: Math.round(geometry.boundingBox!.max.z / layerHeight)
-	} satisfies ProgressMessage);
-}
