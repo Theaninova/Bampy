@@ -101,9 +101,9 @@
 	{@const visible = showSlices >= i / $layers.length}
 	{@const color = new Color(0, i / $layers.length, 0.2)}
 	{#if type === LayerType.Line}
-		<T.Line {geometry} {visible}>
+		<T.LineSegments {geometry} {visible}>
 			<T.LineBasicMaterial {color} />
-		</T.Line>
+		</T.LineSegments>
 	{:else if type === LayerType.Surface}
 		<T.Mesh {geometry} {visible}>
 			<T.MeshMatcapMaterial {color} side={DoubleSide} />

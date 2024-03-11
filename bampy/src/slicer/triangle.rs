@@ -1,9 +1,9 @@
-use approx::{relative_eq, AbsDiffEq, RelativeEq};
+use approx::{assert_relative_ne, relative_eq, AbsDiffEq, RelativeEq};
 use bvh::{
     aabb::{Aabb, Bounded},
     bounding_hierarchy::BHShape,
 };
-use nalgebra::{ClosedAdd, ClosedMul, ClosedSub, Scalar, SimdPartialOrd, Vector3};
+use nalgebra::{ClosedAdd, ClosedMul, ClosedSub, Point3, Scalar, SimdPartialOrd, Vector3};
 use num::{Float, FromPrimitive};
 
 use super::line::Line3;
@@ -43,16 +43,24 @@ where
         + FromPrimitive,
 {
     pub fn new(a: Vector3<T>, b: Vector3<T>, c: Vector3<T>) -> Self {
-        let normal = (b - a).cross(&(c - a));
-        let mut aabb = Aabb::with_bounds(a.into(), b.into());
-        aabb.grow_mut(&c.into());
         Self {
             a,
             b,
             c,
-            normal: normal.into(),
+            normal: (b - a).cross(&(c - a)).into(),
             node_index: 0,
-            aabb,
+            aabb: Aabb::with_bounds(
+                Point3::new(
+                    T::min(T::min(a.x, b.x), c.x),
+                    T::min(T::min(a.y, b.y), c.y),
+                    T::min(T::min(a.z, b.z), c.z),
+                ),
+                Point3::new(
+                    T::max(T::max(a.x, b.x), c.x),
+                    T::max(T::max(a.y, b.y), c.y),
+                    T::max(T::max(a.z, b.z), c.z),
+                ),
+            ),
         }
     }
 
@@ -80,14 +88,14 @@ where
 
     pub fn intersect_z(&self, z: T) -> Option<Line3<T>> {
         let mut intersection = Vec::with_capacity(3);
-        let mut last = self.c;
+        let mut last = &self.c;
         for point in [self.a, self.b, self.c].iter() {
             if relative_eq!(point.z, z) {
                 intersection.push(*point);
-            } else if last.z < z && point.z > z || last.z > z && point.z < z {
+            } else if (last.z < z && point.z > z) || (last.z > z && point.z < z) {
                 intersection.push(last.lerp(&point, (z - last.z) / (point.z - last.z)));
             }
-            last = *point;
+            last = point;
         }
         if intersection.len() == 2 {
             Some(Line3 {

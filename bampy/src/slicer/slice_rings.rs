@@ -22,28 +22,29 @@ pub fn find_slice_rings(mut slice: BaseSlice) -> Vec<SliceRing> {
 
         let mut previous_len = usize::MAX;
         while relative_ne!(ring.points[0], right) {
-            if previous_len == ring.points.len() {
+            if previous_len == slice.lines.len() {
                 console_log!(
                     "Error: Could not find a ring for slice at z = {}, {} items left.",
                     slice.z,
-                    ring.points.len()
+                    slice.lines.len()
                 );
                 break;
             }
-            previous_len = ring.points.len();
+            previous_len = slice.lines.len();
 
             slice.lines.retain_mut(|line| {
-                if relative_eq!(line.start, right, epsilon = 0.001) {
-                    ring.points.push(line.end);
-                    right = line.end;
-                    false
-                } else if relative_eq!(line.end, right, epsilon = 0.001) {
+                //if relative_eq!(line.start, right, epsilon = 0.001) {
+                ring.points.push(line.start);
+                ring.points.push(line.end);
+                right = line.end;
+                false
+                /*} else if relative_eq!(line.end, right, epsilon = 0.001) {
                     ring.points.push(line.start);
                     right = line.start;
                     false
                 } else {
                     true
-                }
+                }*/
             })
         }
 

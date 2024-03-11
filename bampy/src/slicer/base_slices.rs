@@ -40,6 +40,8 @@ pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<Slice
                     child_r_index,
                     child_r_aabb,
                 } => {
+                    assert!(child_l_aabb.min.z <= child_l_aabb.max.z);
+                    assert!(child_r_aabb.min.z <= child_r_aabb.max.z);
                     if layer >= child_l_aabb.min.z && layer <= child_l_aabb.max.z {
                         stack.push(child_l_index);
                     }

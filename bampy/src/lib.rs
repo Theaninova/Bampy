@@ -56,7 +56,7 @@ pub fn slice(
             slicable_triangles.push(triangle);
         } else {
             slicable_triangles.push(triangle);
-            surface_triangles.push(triangle);
+            //surface_triangles.push(triangle);
         }
     }
     slicable_triangles.shrink_to_fit();
@@ -65,7 +65,7 @@ pub fn slice(
     let slicer_options = SlicerOptions { layer_height };
 
     console_log!("Creating Surfaces");
-    let surfaces = split_surface(surface_triangles);
+    // let surfaces = split_surface(surface_triangles);
 
     console_log!("Computing BVH");
     let slicable = Mesh::from(slicable_triangles);
