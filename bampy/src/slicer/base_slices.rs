@@ -1,13 +1,10 @@
-use bvh::bvh::BvhNode;
-
-use crate::console_log;
-
 use super::{
     line::Line3,
     mesh::Mesh,
     slice_rings::{find_slice_rings, SliceRing},
     SlicerOptions,
 };
+use bvh::bvh::BvhNode;
 
 #[derive(Debug)]
 pub struct BaseSlice {
@@ -20,9 +17,9 @@ pub struct BaseSlice {
 pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f64>) -> Vec<SliceRing> {
     let layer_count = f64::floor(slicable.aabb.max.z / options.layer_height) as usize;
     let mut rings = vec![];
+    let mut layer_index = 0;
 
     for i in 0..layer_count {
-        console_log!("Layer {}", i);
         let layer = i as f64 * options.layer_height;
         let mut base_slice = BaseSlice {
             z: layer,
@@ -62,7 +59,7 @@ pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f64>) -> Vec<Slice
             }
         }
 
-        rings.append(&mut find_slice_rings(base_slice));
+        rings.append(&mut find_slice_rings(base_slice, &mut layer_index));
     }
 
     rings

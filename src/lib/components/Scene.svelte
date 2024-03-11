@@ -58,6 +58,7 @@
 	export let progress = writable<number | undefined>(undefined);
 	export let progressLayer = writable(0);
 	export let showSlices = 1;
+	export let maxZ = 0;
 
 	export let maxNonPlanarAngle = MathUtils.degToRad(20);
 	export let bedNormal = new Vector3(0, 0, 1);
@@ -98,7 +99,7 @@
 />
 
 {#each $layers as { geometry, type }, i}
-	{@const visible = showSlices >= i / $layers.length}
+	{@const visible = maxZ !== 0 ? i === maxZ : showSlices >= i / $layers.length}
 	{@const color = new Color(Math.random() * 0xffffff)}
 	<!---{@const color = new Color(0, i / $layers.length, 0.2)}-->
 	{#if type === LayerType.Line}

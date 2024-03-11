@@ -6,14 +6,16 @@
 
 	let progress: Writable<number | undefined>;
 	let showSlices = 1;
+	let maxZ = 0;
 	let progressLayer: Writable<number>;
 </script>
 
 <Canvas>
-	<Scene bind:progress bind:showSlices bind:progressLayer />
+	<Scene bind:progress bind:showSlices bind:progressLayer bind:maxZ />
 </Canvas>
 
 <div class="controls">
+	<input type="number" bind:value={maxZ} />
 	<input type="range" min="0" max="1" step="0.001" bind:value={showSlices} orient="vertical" />
 </div>
 
@@ -29,6 +31,10 @@
 <style lang="scss">
 	input[type='range'] {
 		height: 80%;
+	}
+
+	input[type='number'] {
+		width: 60px;
 	}
 
 	.controls {
