@@ -24,11 +24,24 @@ pub struct SliceOptions {
 }
 
 #[derive(Tsify, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+#[tsify(into_wasm_abi)]
+pub enum Slice {
+    Surface {
+        #[tsify(type = "Float32Array")]
+        position: Vec<f32>,
+    },
+    Ring {
+        #[tsify(type = "Float32Array")]
+        position: Vec<f32>,
+    },
+}
+
+#[derive(Tsify, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[tsify(into_wasm_abi)]
 pub struct SliceResult {
-    #[tsify(type = "Array<Float32Array>")]
-    rings: Vec<Vec<f32>>,
+    slices: Vec<Slice>,
 }
 
 #[wasm_bindgen]
@@ -68,7 +81,7 @@ pub fn slice(
             slicable_triangles.push(triangle);
         } else {
             slicable_triangles.push(triangle);
-            //surface_triangles.push(triangle);
+            surface_triangles.push(triangle);
         }
     }
     slicable_triangles.shrink_to_fit();
@@ -79,7 +92,7 @@ pub fn slice(
     };
 
     console_log!("Creating Surfaces");
-    // let surfaces = split_surface(surface_triangles);
+    let surfaces = split_surface(surface_triangles);
 
     console_log!("Computing BVH");
     let slicable = Mesh::from(slicable_triangles);
@@ -88,15 +101,36 @@ pub fn slice(
     console_log!("Done");
 
     SliceResult {
-        rings: slices
+        slices: slices
             .into_iter()
-            .map(|slice| {
-                slice
+            .map(|slice| Slice::Ring {
+                position: slice
                     .points
                     .into_iter()
                     .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
-                    .collect()
+                    .collect(),
             })
+            .chain(surfaces.into_iter().map(|surface| {
+                Slice::Surface {
+                    position: surface
+                        .triangles
+                        .into_iter()
+                        .flat_map(|triangle| {
+                            [
+                                triangle.a.x as f32,
+                                triangle.a.y as f32,
+                                triangle.a.z as f32,
+                                triangle.b.x as f32,
+                                triangle.b.y as f32,
+                                triangle.b.z as f32,
+                                triangle.c.x as f32,
+                                triangle.c.y as f32,
+                                triangle.c.z as f32,
+                            ]
+                        })
+                        .collect(),
+                }
+            }))
             .collect(),
     }
 }

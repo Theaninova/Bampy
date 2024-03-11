@@ -20,13 +20,19 @@ addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
 			layerHeight: event.data.data.layerHeight,
 			maxAngle: event.data.data.maxNonPlanarAngle
 		});
-		for (const layer of result.rings) {
+		for (const layer of result.slices) {
 			const geometry = new BufferGeometry();
-			geometry.setAttribute('position', new Float32BufferAttribute(layer, 3));
+			geometry.setAttribute('position', new Float32BufferAttribute(layer.position, 3));
+			if (layer.type === 'surface') {
+				geometry.computeVertexNormals();
+			}
 
 			self.postMessage({
 				type: 'layer',
-				data: { type: LayerType.Line, geometry: geometry.toJSON() }
+				data: {
+					type: layer.type === 'ring' ? LayerType.Line : LayerType.Surface,
+					geometry: geometry.toJSON()
+				}
 			} satisfies LayerMessage);
 		}
 	}

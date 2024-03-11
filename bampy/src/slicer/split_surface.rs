@@ -2,7 +2,7 @@ use super::{mesh::Mesh, triangle::Triangle};
 use bvh::bvh::{Bvh, BvhNode};
 
 /// Splits a surface into connected surfaces.
-pub fn split_surface(mut triangles: Vec<Triangle<f32>>) -> Vec<Mesh<f32>> {
+pub fn split_surface(mut triangles: Vec<Triangle<f64>>) -> Vec<Mesh<f64>> {
     let mut surfaces = vec![];
     while let Some(triangle) = triangles.pop() {
         let mut surface = vec![triangle];
@@ -20,10 +20,10 @@ pub fn split_surface(mut triangles: Vec<Triangle<f32>>) -> Vec<Mesh<f32>> {
                         child_r_index,
                         child_r_aabb,
                     } => {
-                        if triangle.intersects_aabb(&child_l_aabb) {
+                        if triangle.has_point_in_aabb(&child_l_aabb) {
                             stack.push(child_l_index);
                         }
-                        if triangle.intersects_aabb(&child_r_aabb) {
+                        if triangle.has_point_in_aabb(&child_r_aabb) {
                             stack.push(child_r_index);
                         }
                     }

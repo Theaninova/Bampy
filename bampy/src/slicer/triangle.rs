@@ -1,4 +1,4 @@
-use approx::{relative_eq, relative_ne, AbsDiffEq, RelativeEq};
+use approx::{relative_eq, AbsDiffEq, RelativeEq};
 use bvh::{
     aabb::{Aabb, Bounded},
     bounding_hierarchy::BHShape,
@@ -64,7 +64,7 @@ where
         }
     }
 
-    pub fn intersects_aabb(&self, aabb: &Aabb<T, 3>) -> bool {
+    pub fn has_point_in_aabb(&self, aabb: &Aabb<T, 3>) -> bool {
         vec_inside_aabb(&self.a, aabb)
             || vec_inside_aabb(&self.b, aabb)
             || vec_inside_aabb(&self.c, aabb)
