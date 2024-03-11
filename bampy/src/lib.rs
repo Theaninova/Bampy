@@ -11,7 +11,7 @@ use crate::slicer::{
 mod slicer;
 mod util;
 
-const BED_NORMAL: Vector3<f32> = vector![0f32, 0f32, 1f32];
+const BED_NORMAL: Vector3<f64> = vector![0f64, 0f64, 1f64];
 
 #[derive(Tsify, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,16 +43,28 @@ pub fn slice(
 
     assert_eq!(positions.len() % 9, 0);
 
-    let mut surface_triangles = Vec::<Triangle<f32>>::with_capacity(positions.len() / 9);
-    let mut slicable_triangles = Vec::with_capacity(positions.len() / 9);
+    let mut surface_triangles = Vec::<Triangle<f64>>::with_capacity(positions.len() / 9);
+    let mut slicable_triangles = Vec::<Triangle<f64>>::with_capacity(positions.len() / 9);
     for i in (0..positions.len()).step_by(9) {
         let triangle = Triangle::new(
-            vector![positions[i], positions[i + 1], positions[i + 2]],
-            vector![positions[i + 3], positions[i + 4], positions[i + 5]],
-            vector![positions[i + 6], positions[i + 7], positions[i + 8]],
+            vector![
+                positions[i] as f64,
+                positions[i + 1] as f64,
+                positions[i + 2] as f64
+            ],
+            vector![
+                positions[i + 3] as f64,
+                positions[i + 4] as f64,
+                positions[i + 5] as f64
+            ],
+            vector![
+                positions[i + 6] as f64,
+                positions[i + 7] as f64,
+                positions[i + 8] as f64
+            ],
         );
 
-        if triangle.normal.angle(&BED_NORMAL) > max_angle {
+        if triangle.normal.angle(&BED_NORMAL) > max_angle as f64 {
             slicable_triangles.push(triangle);
         } else {
             slicable_triangles.push(triangle);
@@ -62,7 +74,9 @@ pub fn slice(
     slicable_triangles.shrink_to_fit();
     surface_triangles.shrink_to_fit();
 
-    let slicer_options = SlicerOptions { layer_height };
+    let slicer_options = SlicerOptions {
+        layer_height: layer_height as f64,
+    };
 
     console_log!("Creating Surfaces");
     // let surfaces = split_surface(surface_triangles);
@@ -80,7 +94,7 @@ pub fn slice(
                 slice
                     .points
                     .into_iter()
-                    .flat_map(|point| [point.x, point.y, point.z])
+                    .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
                     .collect()
             })
             .collect(),

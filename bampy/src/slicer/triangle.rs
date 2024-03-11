@@ -1,4 +1,4 @@
-use approx::{assert_relative_ne, relative_eq, AbsDiffEq, RelativeEq};
+use approx::{relative_eq, relative_ne, AbsDiffEq, RelativeEq};
 use bvh::{
     aabb::{Aabb, Bounded},
     bounding_hierarchy::BHShape,
@@ -86,14 +86,29 @@ where
         self.has_vec(other.a) || self.has_vec(other.b) || self.has_vec(other.c)
     }
 
-    pub fn intersect_z(&self, z: T) -> Option<Line3<T>> {
-        let mut intersection = Vec::with_capacity(3);
+    pub fn intersect_z(&self, z: T) -> Option<Line3<T>>
+    where
+        <T as AbsDiffEq>::Epsilon: Clone,
+    {
+        let mut intersection = Vec::<Vector3<T>>::with_capacity(3);
         let mut last = &self.c;
         for point in [self.a, self.b, self.c].iter() {
             if relative_eq!(point.z, z) {
-                intersection.push(*point);
-            } else if (last.z < z && point.z > z) || (last.z > z && point.z < z) {
-                intersection.push(last.lerp(&point, (z - last.z) / (point.z - last.z)));
+                intersection.push(Vector3::new(point.x, point.y, z));
+            } else if last.z < z && point.z > z {
+                let ratio = (z - last.z) / (point.z - last.z);
+                intersection.push(Vector3::new(
+                    last.x + (point.x - last.x) * ratio,
+                    last.y + (point.y - last.y) * ratio,
+                    z,
+                ))
+            } else if last.z > z && point.z < z {
+                let ratio = (z - point.z) / (last.z - point.z);
+                intersection.push(Vector3::new(
+                    point.x + (last.x - point.x) * ratio,
+                    point.y + (last.y - point.y) * ratio,
+                    z,
+                ))
             }
             last = point;
         }

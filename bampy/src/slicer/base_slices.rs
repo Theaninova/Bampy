@@ -11,19 +11,19 @@ use super::{
 
 #[derive(Debug)]
 pub struct BaseSlice {
-    pub z: f32,
-    pub lines: Vec<Line3<f32>>,
+    pub z: f64,
+    pub lines: Vec<Line3<f64>>,
 }
 
 /// Creates base slices from the geometry, excluding surfaces.
 /// The slicse are not sorted or separated into rings.
-pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f32>) -> Vec<SliceRing> {
-    let layer_count = f32::floor(slicable.aabb.max.z / options.layer_height) as usize;
+pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f64>) -> Vec<SliceRing> {
+    let layer_count = f64::floor(slicable.aabb.max.z / options.layer_height) as usize;
     let mut rings = vec![];
 
     for i in 0..layer_count {
         console_log!("Layer {}", i);
-        let layer = i as f32 * options.layer_height;
+        let layer = i as f64 * options.layer_height;
         let mut base_slice = BaseSlice {
             z: layer,
             lines: vec![],

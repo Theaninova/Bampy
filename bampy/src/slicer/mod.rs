@@ -9,5 +9,5 @@ pub mod triangle;
 
 #[derive(Debug)]
 pub struct SlicerOptions {
-    pub layer_height: f32,
+    pub layer_height: f64,
 }
