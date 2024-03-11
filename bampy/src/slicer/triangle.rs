@@ -18,16 +18,19 @@ pub struct Triangle<T: SimdPartialOrd + Scalar + Copy> {
     pub aabb: Aabb<T, 3>,
 }
 
-fn vec_inside_aabb<T: SimdPartialOrd + Scalar + Copy + Float>(
+#[inline(always)]
+fn vec_inside_aabb<T: SimdPartialOrd + Scalar + Copy + Float + RelativeEq + approx::AbsDiffEq>(
     vec: &Vector3<T>,
     aabb: &Aabb<T, 3>,
 ) -> bool {
-    vec.x >= aabb.min.x
-        && vec.y >= aabb.min.y
-        && vec.z >= aabb.min.z
-        && vec.x <= aabb.max.x
-        && vec.y <= aabb.max.y
-        && vec.z <= aabb.max.z
+    macro_rules! within {
+        ($axis:ident) => {
+            ((vec.$axis >= aabb.min.$axis && vec.$axis <= aabb.max.$axis)
+                || relative_eq!(vec.$axis, aabb.min.$axis)
+                || relative_eq!(vec.$axis, aabb.max.$axis))
+        };
+    }
+    within!(x) && within!(y) && within!(z)
 }
 
 impl<T> Triangle<T>
