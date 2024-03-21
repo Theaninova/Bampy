@@ -34,7 +34,7 @@ pub fn split_surface(mut triangles: Vec<Triangle<f64>>) -> Vec<Mesh<f64>> {
                             parent_index: _,
                             shape_index,
                         } => {
-                            if triangle.connected_with_triangle(surface[shape_index]) {
+                            if triangle.shares_point_with_triangle(surface[shape_index]) {
                                 mutated = true;
                                 surface.push(*triangle);
                                 let index = surface.len() - 1;
@@ -52,11 +52,13 @@ pub fn split_surface(mut triangles: Vec<Triangle<f64>>) -> Vec<Mesh<f64>> {
             }
         }
 
-        surfaces.push(Mesh {
-            triangles: surface,
-            aabb,
-            bvh,
-        })
+        if surface.len() > 1 {
+            surfaces.push(Mesh {
+                triangles: surface,
+                aabb,
+                bvh,
+            })
+        }
     }
     surfaces
 }

@@ -1,11 +1,12 @@
+use approx::relative_eq;
 use nalgebra::{vector, Vector3};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::slicer::{
-    base_slices::create_slices, mesh::Mesh, split_surface::split_surface, triangle::Triangle,
-    SlicerOptions,
+    base_slices::create_slices, mesh::Mesh, split_surface::split_surface,
+    trace_surface::trace_surface, triangle::Triangle, SlicerOptions,
 };
 
 mod slicer;
@@ -19,8 +20,8 @@ const BED_NORMAL: Vector3<f64> = vector![0f64, 0f64, 1f64];
 pub struct SliceOptions {
     #[tsify(type = "Float32Array")]
     positions: Vec<f32>,
-    layer_height: f32,
-    max_angle: f32,
+    layer_height: f64,
+    max_angle: f64,
 }
 
 #[derive(Tsify, Serialize, Deserialize)]
@@ -77,19 +78,16 @@ pub fn slice(
             ],
         );
 
-        if triangle.normal.angle(&BED_NORMAL) > max_angle as f64 {
-            slicable_triangles.push(triangle);
-        } else {
-            slicable_triangles.push(triangle);
+        slicable_triangles.push(triangle);
+        let angle = triangle.normal.angle(&BED_NORMAL);
+        if angle <= max_angle || relative_eq!(angle, max_angle) {
             surface_triangles.push(triangle);
         }
     }
     slicable_triangles.shrink_to_fit();
     surface_triangles.shrink_to_fit();
 
-    let slicer_options = SlicerOptions {
-        layer_height: layer_height as f64,
-    };
+    let slicer_options = SlicerOptions { layer_height };
 
     console_log!("Creating Surfaces");
     let surfaces = split_surface(surface_triangles);
@@ -97,8 +95,14 @@ pub fn slice(
     console_log!("Computing BVH");
     let slicable = Mesh::from(slicable_triangles);
     console_log!("Creating Slices");
-    let slices = create_slices(&slicer_options, &slicable);
+    let mut slices = create_slices(&slicer_options, &slicable);
     console_log!("Done");
+
+    for slice in &mut slices {
+        for surface in &surfaces {
+            trace_surface(slice, surface)
+        }
+    }
 
     SliceResult {
         slices: slices

@@ -81,12 +81,23 @@ where
         relative_eq!(self.a, vec) || relative_eq!(self.b, vec) || relative_eq!(self.c, vec)
     }
 
-    pub fn connected_with_triangle(&self, other: Triangle<T>) -> bool
+    pub fn shares_point_with_triangle(&self, other: Triangle<T>) -> bool
     where
         T: RelativeEq + Clone,
         <T as AbsDiffEq>::Epsilon: Clone,
     {
         self.has_vec(other.a) || self.has_vec(other.b) || self.has_vec(other.c)
+    }
+
+    pub fn shares_edge_with_triangle(&self, other: Triangle<T>) -> bool
+    where
+        T: RelativeEq + Clone,
+        <T as AbsDiffEq>::Epsilon: Clone,
+    {
+        let a = self.has_vec(other.a);
+        let b = self.has_vec(other.b);
+        let c = self.has_vec(other.c);
+        a && b || a && c || b && c
     }
 
     pub fn intersect_z(&self, z: T) -> Option<Line3<T>>
