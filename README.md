@@ -6,6 +6,8 @@ A work-in-progress slicer universal non-planar slicing, currently in proof-of-co
 
 The slicer was written from scratch, using Rust and WASM to run in the browser.
 
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/68zsGoFtG7Y/0.jpg)](http://www.youtube.com/watch?v=68zsGoFtG7Y)
+
 ## Explanation
 
 Non-planar slicing is nothing new, however so far what you see everywhere are either just hardware projects or hand-crafted gcode.
