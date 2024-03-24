@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::slicer::{
     base_slices::create_slices, mesh::Mesh, split_surface::split_surface,
-    trace_surface::trace_surface, triangle::Triangle, SlicerOptions,
+    trace_surface::trace_surface, triangle::Triangle, FloatValue, SlicerOptions,
 };
 
 mod slicer;
@@ -57,24 +57,24 @@ pub fn slice(
 
     assert_eq!(positions.len() % 9, 0);
 
-    let mut surface_triangles = Vec::<Triangle<f64>>::with_capacity(positions.len() / 9);
-    let mut slicable_triangles = Vec::<Triangle<f64>>::with_capacity(positions.len() / 9);
+    let mut surface_triangles = Vec::<Triangle>::with_capacity(positions.len() / 9);
+    let mut slicable_triangles = Vec::<Triangle>::with_capacity(positions.len() / 9);
     for i in (0..positions.len()).step_by(9) {
         let triangle = Triangle::new(
             vector![
-                positions[i] as f64,
-                positions[i + 1] as f64,
-                positions[i + 2] as f64
+                positions[i] as FloatValue,
+                positions[i + 1] as FloatValue,
+                positions[i + 2] as FloatValue
             ],
             vector![
-                positions[i + 3] as f64,
-                positions[i + 4] as f64,
-                positions[i + 5] as f64
+                positions[i + 3] as FloatValue,
+                positions[i + 4] as FloatValue,
+                positions[i + 5] as FloatValue
             ],
             vector![
-                positions[i + 6] as f64,
-                positions[i + 7] as f64,
-                positions[i + 8] as f64
+                positions[i + 6] as FloatValue,
+                positions[i + 7] as FloatValue,
+                positions[i + 8] as FloatValue
             ],
         );
 
@@ -96,14 +96,18 @@ pub fn slice(
     let slicable = Mesh::from(slicable_triangles);
     console_log!("Creating Slices");
     let mut slices = create_slices(&slicer_options, &slicable);
-    console_log!("Done");
 
+    console_log!("Tracing Surfaces");
+    let a = max_angle.tan();
     for slice in &mut slices {
         for surface in &surfaces {
-            trace_surface(slice, surface)
+            if surface.aabb.min.z <= slice.z && surface.aabb.max.z > slice.z {
+                trace_surface(slice, surface, a);
+            }
         }
     }
 
+    console_log!("Done");
     SliceResult {
         slices: slices
             .into_iter()

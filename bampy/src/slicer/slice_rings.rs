@@ -3,13 +3,13 @@ use nalgebra::Vector3;
 
 use crate::console_log;
 
-use super::base_slices::BaseSlice;
+use super::{base_slices::BaseSlice, FloatValue};
 
 #[derive(Debug)]
 pub struct SliceRing {
-    pub z: f64,
+    pub z: FloatValue,
     /// The points of the ring, in clockwise order.
-    pub points: Vec<Vector3<f64>>,
+    pub points: Vec<Vector3<FloatValue>>,
 }
 
 pub fn find_slice_rings(mut slice: BaseSlice, layer_index: &mut u32) -> Vec<SliceRing> {

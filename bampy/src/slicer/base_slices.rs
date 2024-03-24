@@ -2,25 +2,25 @@ use super::{
     line::Line3,
     mesh::Mesh,
     slice_rings::{find_slice_rings, SliceRing},
-    SlicerOptions,
+    FloatValue, SlicerOptions,
 };
 use bvh::bvh::BvhNode;
 
 #[derive(Debug)]
 pub struct BaseSlice {
-    pub z: f64,
-    pub lines: Vec<Line3<f64>>,
+    pub z: FloatValue,
+    pub lines: Vec<Line3>,
 }
 
 /// Creates base slices from the geometry, excluding surfaces.
 /// The slicse are not sorted or separated into rings.
-pub fn create_slices(options: &SlicerOptions, slicable: &Mesh<f64>) -> Vec<SliceRing> {
-    let layer_count = f64::floor(slicable.aabb.max.z / options.layer_height) as usize;
+pub fn create_slices(options: &SlicerOptions, slicable: &Mesh) -> Vec<SliceRing> {
+    let layer_count = (slicable.aabb.max.z / options.layer_height).floor() as usize;
     let mut rings = vec![];
     let mut layer_index = 0;
 
     for i in 0..layer_count {
-        let layer = i as f64 * options.layer_height;
+        let layer = i as FloatValue * options.layer_height;
         let mut base_slice = BaseSlice {
             z: layer,
             lines: vec![],
