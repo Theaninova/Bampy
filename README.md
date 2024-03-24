@@ -1,6 +1,6 @@
 # Bampy
 
-[Discord](https://discord.gg/v6qBb76zkK), any help is welcome.
+[![Discord](https://img.shields.io/discord/1221523439806840922)](https://discord.gg/v6qBb76zkK)
 
 A work-in-progress slicer universal non-planar slicing, currently in proof-of-concept state.
 
