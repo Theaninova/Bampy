@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { T, type AsyncWritable } from '@threlte/core';
-	import { Gizmo, Grid, OrbitControls } from '@threlte/extras';
+	import { Gizmo, Grid, MeshLineGeometry, MeshLineMaterial, OrbitControls } from '@threlte/extras';
 	import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 	import { useLoader } from '@threlte/core';
 	import {
@@ -9,7 +9,9 @@
 		Vector3,
 		DoubleSide,
 		Color,
-		BufferGeometryLoader
+		BufferGeometryLoader,
+		TubeGeometry,
+		CatmullRomCurve3
 	} from 'three';
 	import { writable } from 'svelte/store';
 	import { onDestroy, onMount } from 'svelte';
@@ -34,12 +36,19 @@
 					break;
 				}
 				case 'layer': {
-					const layer = event.data.data;
 					layers.update((layers) => {
-						layers.push({
-							type: layer.type,
-							geometry: geometryLoader.parse(layer.geometry)
-						});
+						const layer = event.data.data;
+						if (layer.type === 'ring') {
+							const curve = new CatmullRomCurve3(
+								Array.from({ length: layer.position.length / 3 }, (_, i) =>
+									new Vector3().fromArray(layer.position, i * 3)
+								)
+							);
+							const geometry = new TubeGeometry(curve, undefined, 0.1);
+
+							layers.push(geometry);
+						} else if (layer.type === 'surface') {
+						}
 						return layers;
 					});
 					break;
@@ -98,19 +107,13 @@
 	gridSize={[buildSurface[0], buildSurface[1]]}
 />
 
-{#each $layers as { geometry, type }, i}
+{#each $layers as geometry, i}
 	{@const visible = maxZ !== 0 ? i === maxZ : showSlices >= i / $layers.length}
 	{@const color = new Color(Math.random() * 0xffffff)}
 	<!---{@const color = new Color(0, i / $layers.length, 0.2)}-->
-	{#if type === LayerType.Line}
-		<T.Line {geometry} {visible}>
-			<T.LineBasicMaterial {color} />
-		</T.Line>
-	{:else if type === LayerType.Surface}
-		<T.Mesh {geometry} {visible}>
-			<T.MeshMatcapMaterial {color} side={DoubleSide} />
-		</T.Mesh>
-	{/if}
+	<T.Mesh {geometry} {visible}>
+		<T.MeshMatcapMaterial {color} side={DoubleSide} />
+	</T.Mesh>
 {/each}
 
 {#if $stl}

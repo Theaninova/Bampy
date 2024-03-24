@@ -80,7 +80,12 @@ pub fn slice(
 
         slicable_triangles.push(triangle);
         let angle = triangle.normal.angle(&BED_NORMAL);
-        if angle <= max_angle || relative_eq!(angle, max_angle) {
+        let opposite_angle = std::f64::consts::PI - angle;
+        if angle <= max_angle
+            || relative_eq!(angle, max_angle)
+            || opposite_angle <= max_angle
+            || relative_eq!(opposite_angle, max_angle)
+        {
             surface_triangles.push(triangle);
         }
     }
@@ -97,7 +102,7 @@ pub fn slice(
     console_log!("Creating Slices");
     let mut slices = create_slices(&slicer_options, &slicable);
 
-    console_log!("Tracing Surfaces");
+    /*console_log!("Tracing Surfaces");
     let a = max_angle.tan();
     for slice in &mut slices {
         for surface in &surfaces {
@@ -105,7 +110,7 @@ pub fn slice(
                 trace_surface(slice, surface, a);
             }
         }
-    }
+    }*/
 
     console_log!("Done");
     SliceResult {

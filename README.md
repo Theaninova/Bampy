@@ -1,38 +1,18 @@
-# create-svelte
+# Bampy
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+[Discord](https://discord.gg/v6qBb76zkK), any help is welcome.
 
-## Creating a project
+A work-in-progress slicer universal non-planar slicing, currently in proof-of-concept state.
 
-If you're seeing this, you've probably already done this step. Congrats!
+The slicer was written from scratch, using Rust and WASM to run in the browser.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+## Explanation
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+Non-planar slicing is nothing new, however so far what you see everywhere are either just hardware projects or hand-crafted gcode.
+Full Control was an interesting step, but ultimately not something everyone can use.
+Same with bending gcode, conical slicing - they require tons of manual work and pre-thinking and an object designed for it.
 
-## Developing
+The challenge with a non-planar slicer is that the toolhead would bump into already printed objects while printing the non-planar surfaces.
+In this first step I managed to create a slicer that finds toolpaths that work around this issue.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+The next step is getting the slicer to a point where it can output gcode following the prepared toolpaths and adding infill, as well as fixing the bugs that would cause the toolhead to print paths under existing layers (you can see it at the front of the ship).
