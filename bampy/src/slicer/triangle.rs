@@ -73,26 +73,24 @@ impl Triangle {
         a && b || a && c || b && c
     }
 
-    pub fn intersect_z(&self, z: FloatValue) -> Option<Line3> {
+    pub fn intersect(&self, value: FloatValue, axis: usize) -> Option<Line3> {
         let mut intersection = Vec::<Vector3<FloatValue>>::with_capacity(3);
         let mut last = &self.c;
         for point in [self.a, self.b, self.c].iter() {
-            if relative_eq!(point.z, z) {
-                intersection.push(Vector3::new(point.x, point.y, z));
-            } else if last.z < z && point.z > z {
-                let ratio = (z - last.z) / (point.z - last.z);
-                intersection.push(Vector3::new(
-                    last.x + (point.x - last.x) * ratio,
-                    last.y + (point.y - last.y) * ratio,
-                    z,
-                ))
-            } else if last.z > z && point.z < z {
-                let ratio = (z - point.z) / (last.z - point.z);
-                intersection.push(Vector3::new(
-                    point.x + (last.x - point.x) * ratio,
-                    point.y + (last.y - point.y) * ratio,
-                    z,
-                ))
+            if relative_eq!(point[axis], value) {
+                let mut new_point = *point;
+                new_point[axis] = value;
+                intersection.push(new_point);
+            } else if last[axis] < value && point[axis] > value {
+                let ratio = (value - last[axis]) / (point[axis] - last[axis]);
+                let mut new_point = last + (point - last) * ratio;
+                new_point[axis] = value;
+                intersection.push(new_point);
+            } else if last[axis] > value && point[axis] < value {
+                let ratio = (value - point[axis]) / (last[axis] - point[axis]);
+                let mut new_point = point + (last - point) * ratio;
+                new_point[axis] = value;
+                intersection.push(new_point);
             }
             last = point;
         }

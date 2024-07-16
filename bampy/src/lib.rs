@@ -1,11 +1,14 @@
+use std::iter::empty;
+
 use approx::relative_eq;
-use nalgebra::{vector, Vector3};
+use nalgebra::{vector, SimdBool, Vector3};
 use serde::{Deserialize, Serialize};
+use slicer::{line::Line3, slice_rings::slice_rings};
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::slicer::{
-    base_slices::create_slices, mesh::Mesh, split_surface::split_surface,
+    base_slices::create_base_slices, mesh::Mesh, split_surface::split_surface,
     trace_surface::trace_surface, triangle::Triangle, FloatValue, SlicerOptions,
 };
 
@@ -33,6 +36,10 @@ pub enum Slice {
         position: Vec<f32>,
     },
     Ring {
+        #[tsify(type = "Float32Array")]
+        position: Vec<f32>,
+    },
+    Path {
         #[tsify(type = "Float32Array")]
         position: Vec<f32>,
     },
@@ -95,12 +102,47 @@ pub fn slice(
     let slicer_options = SlicerOptions { layer_height };
 
     console_log!("Creating Surfaces");
-    let surfaces = split_surface(surface_triangles);
+    let surfaces = split_surface(surface_triangles).into_iter().map(|mesh| {
+        slice_rings(1, &slicer_options, &mesh)
+            .flat_map(|mut rings| {
+                /*let mut rings = rings
+                .into_iter()
+                .map(|mut ring| {
+                    ring.points.sort_unstable_by(|a, b| {
+                        a[0].partial_cmp(&b[0]).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    ring
+                })
+                .collect::<Vec<_>>();*/
+                rings.sort_unstable_by(|a, b| {
+                    a.points
+                        .first()
+                        .unwrap()
+                        .partial_cmp(b.points.first().unwrap())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+                rings
+            })
+            .fold(Vec::<Vector3<FloatValue>>::new(), |mut acc, mut curr| {
+                if acc
+                    .last()
+                    .zip(curr.points.first())
+                    .zip(curr.points.last())
+                    .map_or(false, |((last, start), end)| {
+                        start.metric_distance(last) > end.metric_distance(last)
+                    })
+                {
+                    curr.points.reverse();
+                }
+                acc.extend(curr.points);
+                acc
+            })
+    });
 
     console_log!("Computing BVH");
     let slicable = Mesh::from(slicable_triangles);
     console_log!("Creating Slices");
-    let mut slices = create_slices(&slicer_options, &slicable);
+    let slices = slice_rings(2, &slicer_options, &slicable);
 
     /*console_log!("Tracing Surfaces");
     let a = max_angle.tan();
@@ -114,16 +156,23 @@ pub fn slice(
 
     console_log!("Done");
     SliceResult {
-        slices: slices
-            .into_iter()
+        slices: surfaces
             .map(|slice| Slice::Ring {
                 position: slice
-                    .points
                     .into_iter()
                     .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
                     .collect(),
             })
-            .chain(surfaces.into_iter().map(|surface| {
+            /*.chain(slices.flatten().map(|slice| {
+                Slice::Ring {
+                    position: slice
+                        .points
+                        .into_iter()
+                        .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
+                        .collect(),
+                }
+            }))*/
+            /*.chain(surfaces.into_iter().map(|surface| {
                 Slice::Surface {
                     position: surface
                         .triangles
@@ -143,7 +192,7 @@ pub fn slice(
                         })
                         .collect(),
                 }
-            }))
+            }))*/
             .collect(),
     }
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { T, type AsyncWritable } from '@threlte/core';
-	import { Gizmo, Grid, MeshLineGeometry, MeshLineMaterial, OrbitControls } from '@threlte/extras';
+	import { Gizmo, Grid, OrbitControls, MeshLineGeometry, MeshLineMaterial } from '@threlte/extras';
 	import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 	import { useLoader } from '@threlte/core';
 	import {
@@ -9,9 +9,7 @@
 		Vector3,
 		DoubleSide,
 		Color,
-		BufferGeometryLoader,
-		TubeGeometry,
-		CatmullRomCurve3
+		BufferGeometryLoader
 	} from 'three';
 	import { writable } from 'svelte/store';
 	import { onDestroy, onMount } from 'svelte';
@@ -38,15 +36,12 @@
 				case 'layer': {
 					layers.update((layers) => {
 						const layer = event.data.data;
-						if (layer.type === 'ring') {
-							const curve = new CatmullRomCurve3(
+						if (layer.type === 'ring' || layer.type === 'path') {
+							layers.push(
 								Array.from({ length: layer.position.length / 3 }, (_, i) =>
 									new Vector3().fromArray(layer.position, i * 3)
 								)
 							);
-							const geometry = new TubeGeometry(curve, undefined, 0.1);
-
-							layers.push(geometry);
 						} else if (layer.type === 'surface') {
 						}
 						return layers;
@@ -72,7 +67,7 @@
 	export let maxNonPlanarAngle = MathUtils.degToRad(20);
 	export let bedNormal = new Vector3(0, 0, 1);
 
-	let layers = writable<Layer[]>([]);
+	let layers = writable<Vector3[][]>([]);
 
 	const stl: AsyncWritable<BufferGeometry> = useLoader(STLLoader).load('/benchy.stl');
 
@@ -107,12 +102,13 @@
 	gridSize={[buildSurface[0], buildSurface[1]]}
 />
 
-{#each $layers as geometry, i}
+{#each $layers as points, i}
 	{@const visible = maxZ !== 0 ? i === maxZ : showSlices >= i / $layers.length}
 	{@const color = new Color(Math.random() * 0xffffff)}
 	<!---{@const color = new Color(0, i / $layers.length, 0.2)}-->
-	<T.Mesh {geometry} {visible}>
-		<T.MeshMatcapMaterial {color} side={DoubleSide} />
+	<T.Mesh {visible}>
+		<MeshLineGeometry {points} />
+		<MeshLineMaterial width={layerHeight / 6} {color} />
 	</T.Mesh>
 {/each}
 

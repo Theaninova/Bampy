@@ -1,28 +1,26 @@
-use super::{
-    line::Line3,
-    mesh::Mesh,
-    slice_rings::{find_slice_rings, SliceRing},
-    FloatValue, SlicerOptions,
-};
+use super::{line::Line3, mesh::Mesh, FloatValue, SlicerOptions};
+use crate::console_log;
 use bvh::bvh::BvhNode;
 
 #[derive(Debug)]
 pub struct BaseSlice {
-    pub z: FloatValue,
+    pub d: FloatValue,
     pub lines: Vec<Line3>,
 }
 
-/// Creates base slices from the geometry, excluding surfaces.
-/// The slicse are not sorted or separated into rings.
-pub fn create_slices(options: &SlicerOptions, slicable: &Mesh) -> Vec<SliceRing> {
-    let layer_count = (slicable.aabb.max.z / options.layer_height).floor() as usize;
-    let mut rings = vec![];
-    let mut layer_index = 0;
+/// Creates base slices from the geometry
+pub fn create_base_slices<'a>(
+    axis: usize,
+    options: &'a SlicerOptions,
+    slicable: &'a Mesh,
+) -> impl Iterator<Item = BaseSlice> + 'a {
+    let layer_count = ((slicable.aabb.max[axis] - slicable.aabb.min[axis]) / options.layer_height)
+        .floor() as usize;
 
-    for i in 0..layer_count {
-        let layer = i as FloatValue * options.layer_height;
+    (0..layer_count).map(move |i| {
+        let layer = i as FloatValue * options.layer_height + slicable.aabb.min[axis];
         let mut base_slice = BaseSlice {
-            z: layer,
+            d: layer,
             lines: vec![],
         };
 
@@ -37,12 +35,12 @@ pub fn create_slices(options: &SlicerOptions, slicable: &Mesh) -> Vec<SliceRing>
                     child_r_index,
                     child_r_aabb,
                 } => {
-                    assert!(child_l_aabb.min.z <= child_l_aabb.max.z);
-                    assert!(child_r_aabb.min.z <= child_r_aabb.max.z);
-                    if layer >= child_l_aabb.min.z && layer <= child_l_aabb.max.z {
+                    assert!(child_l_aabb.min[axis] <= child_l_aabb.max[axis]);
+                    assert!(child_r_aabb.min[axis] <= child_r_aabb.max[axis]);
+                    if layer >= child_l_aabb.min[axis] && layer <= child_l_aabb.max[axis] {
                         stack.push(child_l_index);
                     }
-                    if layer >= child_r_aabb.min.z && layer <= child_r_aabb.max.z {
+                    if layer >= child_r_aabb.min[axis] && layer <= child_r_aabb.max[axis] {
                         stack.push(child_r_index);
                     }
                 }
@@ -51,7 +49,7 @@ pub fn create_slices(options: &SlicerOptions, slicable: &Mesh) -> Vec<SliceRing>
                     shape_index,
                 } => {
                     slicable.triangles[shape_index]
-                        .intersect_z(layer)
+                        .intersect(layer, axis)
                         .map(|line| {
                             base_slice.lines.push(line);
                         });
@@ -59,8 +57,6 @@ pub fn create_slices(options: &SlicerOptions, slicable: &Mesh) -> Vec<SliceRing>
             }
         }
 
-        rings.append(&mut find_slice_rings(base_slice, &mut layer_index));
-    }
-
-    rings
+        base_slice
+    })
 }
