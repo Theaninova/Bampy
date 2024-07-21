@@ -1,4 +1,4 @@
-use nalgebra::Vector3;
+use nalgebra::{Point3, Vector3};
 
 use super::FloatValue;
 
@@ -8,6 +8,16 @@ use super::FloatValue;
 /// meaning the inside is on the right hand side of the line.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Line3 {
-    pub start: Vector3<FloatValue>,
-    pub end: Vector3<FloatValue>,
+    pub start: Point3<FloatValue>,
+    pub end: Point3<FloatValue>,
+}
+
+impl Line3 {
+    pub fn norm(&self) -> FloatValue {
+        (self.end - self.start).norm()
+    }
+
+    pub fn normal(&self) -> Vector3<FloatValue> {
+        (self.end - self.start).normalize()
+    }
 }

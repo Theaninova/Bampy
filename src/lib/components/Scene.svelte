@@ -58,6 +58,7 @@
 
 	export let buildSurface = [300, 300, 300];
 	export let layerHeight = 0.2;
+	export let nozzleDiameter = 0.4;
 	export let tolerance = 0.005;
 	export let progress = writable<number | undefined>(undefined);
 	export let progressLayer = writable(0);
@@ -79,6 +80,8 @@
 				layerHeight,
 				tolerance,
 				maxNonPlanarAngle,
+				nozzleDiameter,
+				minSurfacePathLength: nozzleDiameter * 4,
 				bedNormal: bedNormal.toArray()
 			}
 		} satisfies SliceEvent);

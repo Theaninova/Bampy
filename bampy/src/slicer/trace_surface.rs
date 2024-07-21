@@ -1,8 +1,8 @@
 use bvh::bvh::BvhNode;
 
-use super::{mesh::Mesh, slice_rings::SliceRing, z_projection::ToolpathIntersects, FloatValue};
+use super::{mesh::Mesh, slice_path::SlicePath, z_projection::ToolpathIntersects, FloatValue};
 
-pub fn trace_surface(slice: &mut SliceRing, surface: &Mesh, a: FloatValue) {
+pub fn trace_surface(slice: &mut SlicePath, surface: &Mesh, a: FloatValue) {
     slice.points.retain_mut(|point| {
         let mut stack = Vec::<usize>::new();
         stack.push(0);

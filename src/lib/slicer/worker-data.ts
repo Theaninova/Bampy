@@ -6,6 +6,8 @@ export interface SliceArguments {
 	maxNonPlanarAngle: number;
 	tolerance: number;
 	layerHeight: number;
+	nozzleDiameter: number;
+	minSurfacePathLength: number;
 }
 
 export interface SliceEvent {

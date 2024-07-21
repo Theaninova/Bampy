@@ -1,5 +1,5 @@
 use bvh::aabb::Aabb;
-use nalgebra::{Point2, Vector2, Vector3};
+use nalgebra::{Point2, Point3};
 
 use super::{triangle::Triangle, FloatValue};
 
@@ -11,7 +11,7 @@ pub trait ProjectToolpath<T> {
 pub trait ToolpathIntersects<T>: ProjectToolpath<T> {
     /// Checks if a hypothetical toolpath that draws the object could intersect
     /// with the given point, given the tangent of the angle of the toolhead
-    fn toolpath_intersects(&self, point: &Vector3<FloatValue>, a: FloatValue) -> bool;
+    fn toolpath_intersects(&self, point: &Point3<FloatValue>, a: FloatValue) -> bool;
 }
 
 pub trait ToolpathIntersection {
@@ -38,7 +38,7 @@ impl ProjectToolpath<Aabb<FloatValue, 2>> for Aabb<FloatValue, 3> {
 }
 
 impl ToolpathIntersects<Aabb<FloatValue, 2>> for Aabb<FloatValue, 3> {
-    fn toolpath_intersects(&self, point: &Vector3<FloatValue>, a: FloatValue) -> bool {
+    fn toolpath_intersects(&self, point: &Point3<FloatValue>, a: FloatValue) -> bool {
         if let Some(aabb) = self.project_toolpath_onto_z(point.z, a) {
             aabb.approx_contains_eps(&Point2::new(point.x, point.y), FloatValue::EPSILON)
         } else {
@@ -100,7 +100,7 @@ impl ProjectToolpath<Triangle2D> for Triangle {
 mod tests {
     use approx::assert_relative_eq;
     use bvh::aabb::Aabb;
-    use nalgebra::{Point3, Vector2, Vector3};
+    use nalgebra::{point, Point3};
 
     use crate::slicer::{triangle::Triangle, z_projection::ProjectToolpath, FloatValue};
 
@@ -129,9 +129,9 @@ mod tests {
     #[test]
     fn test_project_triangle_toolpath() {
         let triangle = Triangle::new(
-            Vector3::new(0.0, 0.0, 0.0),
-            Vector3::new(0.0, 1.5, 1.0),
-            Vector3::new(-0.6, -1.4, 0.2),
+            point![0.0, 0.0, 0.0],
+            point![0.0, 1.5, 1.0],
+            point![-0.6, -1.4, 0.2],
         );
         let a = FloatValue::to_radians(30.0).tan();
 

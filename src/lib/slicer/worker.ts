@@ -18,7 +18,9 @@ addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
 		const result = slice({
 			positions: geometry.attributes.position.array as Float32Array,
 			layerHeight: event.data.data.layerHeight,
-			maxAngle: event.data.data.maxNonPlanarAngle
+			maxAngle: event.data.data.maxNonPlanarAngle,
+			nozzleDiameter: event.data.data.nozzleDiameter,
+			minSurfacePathLength: event.data.data.minSurfacePathLength
 		});
 		for (const layer of result.slices) {
 			self.postMessage({

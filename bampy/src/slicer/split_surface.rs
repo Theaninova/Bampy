@@ -2,6 +2,7 @@ use super::{mesh::Mesh, triangle::Triangle};
 use bvh::bvh::{Bvh, BvhNode};
 
 /// Splits a surface into connected surfaces.
+/// TODO: self intersections
 pub fn split_surface(mut triangles: Vec<Triangle>) -> Vec<Mesh> {
     let mut surfaces = vec![];
     while let Some(triangle) = triangles.pop() {
