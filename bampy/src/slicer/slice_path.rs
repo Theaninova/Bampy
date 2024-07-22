@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::{collections::VecDeque, ops::RangeInclusive};
 
 use approx::relative_eq;
 use bvh::aabb::Aabb;
@@ -6,7 +6,7 @@ use nalgebra::Point3;
 
 use super::{axis::Axis, mesh::Mesh, FloatValue};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SlicePath {
     pub i: usize,
     pub d: FloatValue,
@@ -75,6 +75,34 @@ impl SurfacePathIterator {
     }
 }
 
+fn squish(points: &mut Vec<Point3<FloatValue>>, axis: Axis, d: FloatValue) {
+    macro_rules! ax {
+        ($p: expr) => {
+            $p.coords[axis as usize]
+        };
+    }
+    let first = ax!(points.first().unwrap());
+    let left = points.iter().position(|p| first - ax!(p) > d);
+    let last = ax!(points.last().unwrap());
+    let right = points.iter().rposition(|p| ax!(p) - last > d);
+
+    if let (Some(left), Some(right)) = (left, right) {
+        if left > right {
+            // TODO
+            return;
+        }
+        let total = ax!(points[left + 1]) - first;
+        let delta = ax!(points[left]) - ax!(points[left + 1]);
+        points.splice(
+            0..left,
+            vec![points[left].lerp(&points[left + 1], (d - total) / delta)],
+        );
+
+        let total = last - ax!(points[right + 1]);
+        let delta = ax!(points[right + 1]) - ax!(points[right]);
+    }
+}
+
 impl Iterator for SurfacePathIterator {
     type Item = SurfacePath;
 
@@ -82,8 +110,10 @@ impl Iterator for SurfacePathIterator {
         self.slices.retain_mut(|slice| !slice.is_empty());
 
         let (h_axis, _) = self.axis.other();
+        let mut iter = self.slices.iter_mut();
 
-        let ring = self.slices.first_mut()?.pop()?;
+        let mut ring = iter.next()?.pop()?;
+        // TODO: squish(&mut ring.points, h_axis, self.nozzle_width);
         let mut item = Self::Item {
             i: ring.i..=ring.i,
             d: ring.d..=ring.d,
@@ -92,7 +122,7 @@ impl Iterator for SurfacePathIterator {
             path: ring.points,
         };
 
-        for slice in self.slices.iter_mut().skip(1) {
+        for slice in iter {
             if *item.i.end() != slice[0].i - 1 {
                 break;
             }
@@ -136,9 +166,11 @@ impl Iterator for SurfacePathIterator {
             }
 
             if let Some(mut ring) = index.map(|i| slice.remove(i)) {
+                // TODO: squish(&mut ring.points, h_axis, self.nozzle_width);
                 if needs_reverse {
                     ring.points.reverse();
                 }
+
                 item.i = *item.i.start()..=ring.i;
                 item.d = *item.d.start()..=ring.d;
                 item.path.append(&mut ring.points);

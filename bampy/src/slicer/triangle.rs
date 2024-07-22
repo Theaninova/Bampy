@@ -26,7 +26,7 @@ impl Triangle {
             a,
             b,
             c,
-            normal: (b - a).cross(&(c - a)).into(),
+            normal: (b - a).cross(&(c - a)).normalize(),
             node_index: 0,
             aabb,
         }
@@ -42,13 +42,6 @@ impl Triangle {
 
     pub fn shares_point_with_triangle(&self, other: Triangle) -> bool {
         self.has_point(other.a) || self.has_point(other.b) || self.has_point(other.c)
-    }
-
-    pub fn shares_edge_with_triangle(&self, other: Triangle) -> bool {
-        let a = self.has_point(other.a);
-        let b = self.has_point(other.b);
-        let c = self.has_point(other.c);
-        a && b || a && c || b && c
     }
 
     pub fn intersect(&self, value: FloatValue, axis: usize) -> Option<Line3> {

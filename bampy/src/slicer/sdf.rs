@@ -4,7 +4,7 @@ use nalgebra::{vector, Point, TAffine, Transform, Vector2, Vector3};
 use super::FloatValue;
 
 pub trait Sdf<const D: usize> {
-    fn sdf(&self, p: Point<FloatValue, D>) -> FloatValue;
+    fn sdf(&self, p: &Point<FloatValue, D>) -> FloatValue;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -19,7 +19,7 @@ impl SdfSphere {
 }
 
 impl Sdf<3> for SdfSphere {
-    fn sdf(&self, p: Point<FloatValue, 3>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, 3>) -> FloatValue {
         p.coords.norm() - self.radius
     }
 }
@@ -36,7 +36,7 @@ impl SdfBox {
 }
 
 impl Sdf<3> for SdfBox {
-    fn sdf(&self, p: Point<FloatValue, 3>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, 3>) -> FloatValue {
         let q = p.coords.abs() - self.size.coords;
         q.sup(&Vector3::zeros()).add_scalar(q.max().min(0.0)).norm()
     }
@@ -56,7 +56,7 @@ impl SdfInfiniteCone {
 }
 
 impl Sdf<3> for SdfInfiniteCone {
-    fn sdf(&self, p: Point<FloatValue, 3>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, 3>) -> FloatValue {
         let q = vector![p.coords.xy().norm(), p.z];
         let d = (q - self.angle.scale(q.dot(&self.angle).max(0.0))).norm();
         if q.x * self.angle.y - q.y * self.angle.x > 0.0 {
@@ -80,8 +80,8 @@ impl<T: Sdf<3>> SdfTransform<T> {
 }
 
 impl<T: Sdf<3>> Sdf<3> for SdfTransform<T> {
-    fn sdf(&self, p: Point<FloatValue, 3>) -> FloatValue {
-        self.sdf.sdf(self.transform.inverse_transform_point(&p))
+    fn sdf(&self, p: &Point<FloatValue, 3>) -> FloatValue {
+        self.sdf.sdf(&self.transform.inverse_transform_point(p))
     }
 }
 
@@ -98,8 +98,8 @@ impl<const D: usize, T: Sdf<D>> SdfScale<D, T> {
 }
 
 impl<const D: usize, T: Sdf<D>> Sdf<D> for SdfScale<D, T> {
-    fn sdf(&self, p: Point<FloatValue, D>) -> FloatValue {
-        self.sdf.sdf(p / self.scale) * self.scale
+    fn sdf(&self, p: &Point<FloatValue, D>) -> FloatValue {
+        self.sdf.sdf(&(p / self.scale)) * self.scale
     }
 }
 
@@ -116,7 +116,7 @@ impl<T: Sdf<3>> SdfOnion<T> {
 }
 
 impl<T: Sdf<3>> Sdf<3> for SdfOnion<T> {
-    fn sdf(&self, p: Point<FloatValue, 3>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, 3>) -> FloatValue {
         self.sdf.sdf(p).abs() - self.thickness
     }
 }
@@ -134,7 +134,7 @@ impl<const D: usize, T: Sdf<D>, U: Sdf<D>> SdfUnion<D, T, U> {
 }
 
 impl<const D: usize, T: Sdf<D>, U: Sdf<D>> Sdf<D> for SdfUnion<D, T, U> {
-    fn sdf(&self, p: Point<FloatValue, D>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, D>) -> FloatValue {
         self.sdf_a.sdf(p).min(self.sdf_b.sdf(p))
     }
 }
@@ -152,7 +152,7 @@ impl<const D: usize, T: Sdf<D>, U: Sdf<D>> SdfIntersection<D, T, U> {
 }
 
 impl<const D: usize, T: Sdf<D>, U: Sdf<D>> Sdf<D> for SdfIntersection<D, T, U> {
-    fn sdf(&self, p: Point<FloatValue, D>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, D>) -> FloatValue {
         self.sdf_a.sdf(p).max(self.sdf_b.sdf(p))
     }
 }
@@ -170,7 +170,7 @@ impl<const D: usize, T: Sdf<D>, U: Sdf<D>> SdfDifference<D, T, U> {
 }
 
 impl<const D: usize, T: Sdf<D>, U: Sdf<D>> Sdf<D> for SdfDifference<D, T, U> {
-    fn sdf(&self, p: Point<FloatValue, D>) -> FloatValue {
+    fn sdf(&self, p: &Point<FloatValue, D>) -> FloatValue {
         self.sdf_a.sdf(p).max(-self.sdf_b.sdf(p))
     }
 }

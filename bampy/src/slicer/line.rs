@@ -13,6 +13,10 @@ pub struct Line3 {
 }
 
 impl Line3 {
+    pub fn new(start: Point3<FloatValue>, end: Point3<FloatValue>) -> Self {
+        Self { start, end }
+    }
+
     pub fn norm(&self) -> FloatValue {
         (self.end - self.start).norm()
     }

@@ -22,11 +22,9 @@ addEventListener('message', async (event: MessageEvent<WorkerEvent>) => {
 			nozzleDiameter: event.data.data.nozzleDiameter,
 			minSurfacePathLength: event.data.data.minSurfacePathLength
 		});
-		for (const layer of result.slices) {
-			self.postMessage({
-				type: 'layer',
-				data: layer
-			});
-		}
+		self.postMessage({
+			type: 'result',
+			data: result
+		});
 	}
 });

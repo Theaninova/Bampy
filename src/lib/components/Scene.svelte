@@ -33,16 +33,17 @@
 					progressLayer.set(event.data.layer);
 					break;
 				}
-				case 'layer': {
+				case 'result': {
 					layers.update((layers) => {
-						const layer = event.data.data;
-						if (layer.type === 'ring' || layer.type === 'path') {
-							layers.push(
-								Array.from({ length: layer.position.length / 3 }, (_, i) =>
-									new Vector3().fromArray(layer.position, i * 3)
-								)
-							);
-						} else if (layer.type === 'surface') {
+						for (const layer of event.data.data.slices) {
+							if (layer.type === 'ring' || layer.type === 'path') {
+								layers.push(
+									Array.from({ length: layer.position.length / 3 }, (_, i) =>
+										new Vector3().fromArray(layer.position, i * 3)
+									)
+								);
+							} else if (layer.type === 'surface') {
+							}
 						}
 						return layers;
 					});
@@ -81,7 +82,7 @@
 				tolerance,
 				maxNonPlanarAngle,
 				nozzleDiameter,
-				minSurfacePathLength: nozzleDiameter * 4,
+				minSurfacePathLength: nozzleDiameter * 2,
 				bedNormal: bedNormal.toArray()
 			}
 		} satisfies SliceEvent);
@@ -111,7 +112,7 @@
 	<!---{@const color = new Color(0, i / $layers.length, 0.2)}-->
 	<T.Mesh {visible}>
 		<MeshLineGeometry {points} />
-		<MeshLineMaterial width={layerHeight / 6} {color} />
+		<MeshLineMaterial width={nozzleDiameter * 0.25} {color} />
 	</T.Mesh>
 {/each}
 

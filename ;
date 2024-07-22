@@ -61,7 +61,7 @@ impl Mesh {
             / slice_height)
             .floor() as usize;
 
-        (0..=layer_count).map(move |i| {
+        (0..layer_count).map(move |i| {
             let layer = i as FloatValue * slice_height + self.aabb.min[axis as usize];
             let mut base_slice = BaseSlice {
                 i,
@@ -116,7 +116,7 @@ impl Mesh {
             axis,
             lines: vec![],
         };
-        'triangle: for (triangle_index, triangle) in self.triangles.iter().enumerate() {
+        'triangle: for (i, triangle) in self.triangles.iter().enumerate() {
             let mut stack = Vec::<usize>::with_capacity(self.bvh.nodes.len());
             stack.push(0);
             let mut ab = false;
@@ -154,13 +154,13 @@ impl Mesh {
                         parent_index: _,
                         shape_index,
                     } => {
-                        if triangle_index == shape_index {
+                        if i == shape_index {
                             continue;
                         }
                         let other = &self.triangles[shape_index];
-                        let a = other.has_point(triangle.a);
-                        let b = other.has_point(triangle.b);
-                        let c = other.has_point(triangle.c);
+                        let a = triangle.has_point(other.a);
+                        let b = triangle.has_point(other.b);
+                        let c = triangle.has_point(other.c);
                         ab = ab || (a && b);
                         ac = ac || (a && c);
                         bc = bc || (b && c);
@@ -170,15 +170,6 @@ impl Mesh {
                         }
                     }
                 }
-            }
-            if !ab {
-                base_slice.lines.push(Line3::new(triangle.a, triangle.b));
-            }
-            if !ac {
-                base_slice.lines.push(Line3::new(triangle.a, triangle.c));
-            }
-            if !bc {
-                base_slice.lines.push(Line3::new(triangle.b, triangle.c));
             }
         }
         base_slice

@@ -1,7 +1,11 @@
+#![feature(extract_if)]
+use std::collections::VecDeque;
+
 use approx::relative_eq;
 use nalgebra::{point, vector, Vector3};
+use num::Float;
 use result::{Slice, SliceOptions, SliceResult};
-use slicer::axis::Axis;
+use slicer::{axis::Axis, slice_path::SlicePath, trace_surface::trace_surface};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::slicer::{mesh::Mesh, split_surface::split_surface, triangle::Triangle, FloatValue};
@@ -48,13 +52,10 @@ pub fn slice(
         );
 
         slicable_triangles.push(triangle);
-        let angle = triangle.normal.angle(&BED_NORMAL);
-        let opposite_angle = std::f64::consts::PI - angle;
-        if angle <= max_angle
-            || relative_eq!(angle, max_angle)
-            || opposite_angle <= max_angle
-            || relative_eq!(opposite_angle, max_angle)
-        {
+        let mut normal = triangle.normal.clone();
+        normal.z = normal.z.abs();
+        let angle = normal.angle(&BED_NORMAL);
+        if angle <= max_angle || relative_eq!(angle, max_angle) {
             surface_triangles.push(triangle);
         }
     }
@@ -62,45 +63,130 @@ pub fn slice(
     surface_triangles.shrink_to_fit();
 
     console_log!("Creating Surfaces");
-    let surfaces = split_surface(surface_triangles).into_iter().map(|mesh| {
-        mesh.slice_surface(Axis::X, nozzle_diameter).filter(|path| {
-            let mut length = 0.0;
-            for pair in path.path.windows(2) {
-                length += (pair[0].coords - pair[1].coords).norm();
-                if length >= min_surface_path_length {
+    let min_surface_area = std::f64::consts::PI * (nozzle_diameter / 2.0).powi(2);
+    let mut surfaces = split_surface(surface_triangles)
+        .into_iter()
+        .filter(|mesh| {
+            let mut surface_area = 0.0;
+            for triangle in &mesh.triangles {
+                surface_area += triangle.area();
+                if surface_area >= min_surface_area {
                     return true;
                 }
             }
             return false;
         })
-    });
+        .map(|mesh| {
+            let outline = mesh
+                .outline_base_slice(Axis::Z)
+                .find_paths()
+                .into_iter()
+                .filter(|path| path.closed)
+                .collect::<Vec<_>>();
+            let surface = mesh
+                .slice_surface(Axis::X, nozzle_diameter)
+                .filter(|path| {
+                    let mut length = 0.0;
+                    for pair in path.path.windows(2) {
+                        length += (pair[0].coords - pair[1].coords).norm();
+                        if length >= min_surface_path_length {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
+                .collect::<Vec<_>>();
+            (mesh, outline, surface)
+        })
+        .collect::<Vec<_>>();
+    surfaces
+        .sort_unstable_by(|(a, _, _), (b, _, _)| a.aabb.min.z.partial_cmp(&b.aabb.min.z).unwrap());
 
     console_log!("Creating Walls");
     let wallMesh = Mesh::from(slicable_triangles);
-    let walls = wallMesh.slice_paths(Axis::Z, layer_height);
+    let mut walls = wallMesh
+        .slice_paths(Axis::Z, layer_height)
+        .flat_map(|paths| paths.into_iter().filter(|path| path.closed))
+        .collect::<VecDeque<_>>();
+    let mut active_surfaces = Vec::new();
+    let mut out = Vec::new();
 
-    /*console_log!("Tracing Surfaces");
-    let a = max_angle.tan();
-    for slice in &mut slices {
-        for surface in &surfaces {
-            if surface.aabb.min.z <= slice.z && surface.aabb.max.z > slice.z {
-                trace_surface(slice, surface, a);
+    console_log!("Resolving dependencies");
+    while let Some(mut wall) = walls.pop_front() {
+        active_surfaces.extend(
+            surfaces
+                .extract_if(|surface| surface.0.aabb.min.z <= wall.aabb.max.z)
+                .map(|surface| (surface, Vec::new())),
+        );
+
+        let deactivate =
+            active_surfaces.extract_if(|element| element.0 .0.aabb.max.z < wall.aabb.min.z);
+        for (surface, surface_walls) in deactivate {
+            for ring in surface.1 {
+                out.push(ring.points);
+            }
+            for path in surface.2 {
+                out.push(path.path);
+            }
+            for wall in surface_walls {
+                walls.push_front(wall);
             }
         }
-    }*/
+
+        for surface in active_surfaces.iter_mut() {
+            let held = wall
+                .points
+                .extract_if(|point| !trace_surface(&point, &surface.0 .0, max_angle))
+                .collect::<Vec<_>>();
+            if !held.is_empty() {
+                surface.1.push(SlicePath {
+                    points: held,
+                    ..wall
+                });
+            }
+        }
+
+        if !wall.points.is_empty() {
+            out.push(wall.points);
+        }
+    }
 
     console_log!("Done");
     SliceResult {
-        slices: surfaces
-            .flatten()
+        slices: out
+            .into_iter()
             .map(|slice| Slice::Ring {
                 position: slice
-                    .path
                     .into_iter()
                     .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
                     .collect(),
             })
-            /*.chain(walls.flatten().map(|slice| {
+            .collect(),
+    }
+    /*SliceResult {
+        slices: surfaces
+            .into_iter()
+            .flat_map(|(_, outlines, slices)| {
+                outlines
+                    .into_iter()
+                    .map(|slice| Slice::Ring {
+                        position: slice
+                            .points
+                            .into_iter()
+                            .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
+                            .collect(),
+                    })
+                    .chain(slices.into_iter().map(|slice| {
+                        Slice::Ring {
+                            position: slice
+                                .path
+                                .into_iter()
+                                .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
+                                .collect(),
+                        }
+                    }))
+            })
+            .chain(walls.flatten().map(|slice| {
                 Slice::Ring {
                     position: slice
                         .points
@@ -108,28 +194,7 @@ pub fn slice(
                         .flat_map(|point| [point.x as f32, point.y as f32, point.z as f32])
                         .collect(),
                 }
-            }))*/
-            /*.chain(surfaces.into_iter().map(|surface| {
-                Slice::Surface {
-                    position: surface
-                        .triangles
-                        .into_iter()
-                        .flat_map(|triangle| {
-                            [
-                                triangle.a.x as f32,
-                                triangle.a.y as f32,
-                                triangle.a.z as f32,
-                                triangle.b.x as f32,
-                                triangle.b.y as f32,
-                                triangle.b.z as f32,
-                                triangle.c.x as f32,
-                                triangle.c.y as f32,
-                                triangle.c.z as f32,
-                            ]
-                        })
-                        .collect(),
-                }
-            }))*/
+            }))
             .collect(),
-    }
+    }*/
 }

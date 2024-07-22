@@ -2,9 +2,10 @@ use nalgebra::Vector3;
 
 use super::FloatValue;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
 pub enum Axis {
+    #[default]
     X = 0,
     Y = 1,
     Z = 2,
